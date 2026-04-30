@@ -3,6 +3,7 @@ import { Bell, CheckCheck, Trash2, X, Menu } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useNotificationStore } from '../store/notificationStore';
 import { useAuthStore } from '../store/authStore';
+import { getPortalConfig } from '../utils/portalConfig';
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -51,6 +52,8 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [blink, setBlink] = useState(false);
+  const portal = getPortalConfig();
+  const accentGradient = `linear-gradient(90deg, ${portal.gradientFrom}, ${portal.gradientTo})`;
 
   const count = unreadCount();
   const urgent = urgentCount();
@@ -116,7 +119,12 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="top-header">
+    <header className="top-header" style={{ position: 'relative' }}>
+      {/* Portal accent bottom line */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+        background: accentGradient, opacity: 0.6,
+      }} />
       <div className="top-header-left">
         <button className="hamburger-btn" onClick={onMenuClick} aria-label="Toggle menu">
           <Menu size={20} />
@@ -151,7 +159,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
               <span
                 className="notif-badge"
                 style={{
-                  background: urgent > 0 ? '#EF4444' : '#6366F1',
+                  background: urgent > 0 ? '#EF4444' : portal.accentColor,
                   boxShadow: urgent > 0 && blink ? '0 0 8px 2px rgba(239,68,68,0.6)' : undefined,
                   transition: 'box-shadow 0.3s',
                 }}
@@ -207,7 +215,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
                       onClick={() => handleNotifClick(n)}
                       style={{
                         cursor: n.link ? 'pointer' : 'default',
-                        borderLeft: !n.read && n.urgent ? '3px solid #EF4444' : !n.read ? '3px solid #6366F1' : '3px solid transparent',
+                        borderLeft: !n.read && n.urgent ? '3px solid #EF4444' : !n.read ? `3px solid ${portal.accentColor}` : '3px solid transparent',
                         background: !n.read && n.urgent ? 'rgba(239,68,68,0.04)' : undefined,
                       }}
                     >
@@ -219,7 +227,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
                         <div className="notif-item-msg">{n.message}</div>
                         <div className="notif-item-time">{timeAgo(n.time)}</div>
                       </div>
-                      {!n.read && <span className="notif-dot" style={{ background: n.urgent ? '#EF4444' : '#6366F1' }} />}
+                      {!n.read && <span className="notif-dot" style={{ background: n.urgent ? '#EF4444' : portal.accentColor }} />}
                     </div>
                   ))
                 )}

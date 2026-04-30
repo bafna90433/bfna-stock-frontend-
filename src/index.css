@@ -170,8 +170,8 @@ a:hover { color: var(--primary-700); }
   width: var(--sidebar-width);
   background: var(--sidebar-bg);
   background-image:
-    radial-gradient(at 0% 0%, rgba(99,102,241,0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(139,92,246,0.06) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, var(--primary-subtle) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, var(--primary-glow) 0px, transparent 50%);
   border-right: 1px solid var(--sidebar-border);
   position: fixed;
   top: 0; left: 0;
@@ -216,7 +216,7 @@ a:hover { color: var(--primary-700); }
   letter-spacing: -0.025em;
 }
 .sidebar-logo-text span {
-  background: linear-gradient(135deg, #A5B4FC, #C4B5FD);
+  background: var(--grad-primary);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

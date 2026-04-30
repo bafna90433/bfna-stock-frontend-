@@ -4,6 +4,7 @@ import { Package, TrendingUp, Tags, LayoutDashboard, LogOut, Plus, ArrowLeft } f
 import { useAuthStore } from '../../store/authStore';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { getPortalConfig } from '../../utils/portalConfig';
 
 interface StockManagerSidebarProps {
   open?: boolean;
@@ -16,6 +17,8 @@ const StockManagerSidebar: React.FC<StockManagerSidebarProps> = ({ open, onClose
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [alertCount, setAlertCount] = React.useState(0);
+  const portal = getPortalConfig();
+  const accentGradient = `linear-gradient(135deg, ${portal.gradientFrom}, ${portal.gradientTo})`;
 
   React.useEffect(() => {
     const fetchStats = async () => {
@@ -57,17 +60,19 @@ const StockManagerSidebar: React.FC<StockManagerSidebarProps> = ({ open, onClose
         />
       )}
       <aside className={`sidebar${open ? ' open' : ''}`}>
+        {/* Portal accent top bar */}
+        <div style={{ height: 3, background: accentGradient, flexShrink: 0 }} />
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon" style={{ overflow: 'hidden', background: 'white' }}>
-            <img 
-              src="https://ik.imagekit.io/rishii/bafnatoys/Copy%20of%20Super_Car___05_vrkphh.webp?updatedAt=1775309336739" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-              alt="Logo" 
+          <div className="sidebar-logo-icon" style={{ overflow: 'hidden', background: 'white', boxShadow: `0 8px 24px -6px ${portal.accentColor}60` }}>
+            <img
+              src="https://ik.imagekit.io/rishii/bafnatoys/Copy%20of%20Super_Car___05_vrkphh.webp?updatedAt=1775309336739"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              alt="Logo"
             />
           </div>
           <div>
             <div className="sidebar-logo-text">Stock<span>Pro</span></div>
-            <div style={{ fontSize: '0.62rem', color: 'rgba(148,163,184,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '1px' }}>
+            <div style={{ fontSize: '0.62rem', color: portal.accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '1px', opacity: 0.9 }}>
               Inventory Portal
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import PortalThemeInjector from './components/PortalThemeInjector';
 
 // Base Pages
 import Login from './pages/Login';
@@ -61,6 +62,7 @@ const RoleRedirect: React.FC = () => {
 function App() {
   return (
     <BrowserRouter>
+      <PortalThemeInjector />
       <Toaster position="top-right" toastOptions={{
         style: { background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--border)' },
         success: { iconTheme: { primary: 'var(--success)', secondary: 'white' } },

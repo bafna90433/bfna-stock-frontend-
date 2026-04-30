@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Wallet, LogOut, LayoutDashboard, Truck, Receipt, Users, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import { getPortalConfig } from '../../utils/portalConfig';
 
 interface BillingSidebarProps {
   open?: boolean;
@@ -19,6 +20,8 @@ const menuItems = [
 const BillingSidebar: React.FC<BillingSidebarProps> = ({ open, onClose }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const portal = getPortalConfig();
+  const accentGradient = `linear-gradient(135deg, ${portal.gradientFrom}, ${portal.gradientTo})`;
 
   const handleLogout = () => {
     logout();
@@ -36,17 +39,19 @@ const BillingSidebar: React.FC<BillingSidebarProps> = ({ open, onClose }) => {
       )}
 
       <aside className={`sidebar${open ? ' open' : ''}`}>
+        {/* Portal accent top bar */}
+        <div style={{ height: 3, background: accentGradient, flexShrink: 0 }} />
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon" style={{ overflow: 'hidden', background: 'white' }}>
-            <img 
-              src="https://ik.imagekit.io/rishii/bafnatoys/Copy%20of%20Super_Car___05_vrkphh.webp?updatedAt=1775309336739" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-              alt="Logo" 
+          <div className="sidebar-logo-icon" style={{ overflow: 'hidden', background: 'white', boxShadow: `0 8px 24px -6px ${portal.accentColor}60` }}>
+            <img
+              src="https://ik.imagekit.io/rishii/bafnatoys/Copy%20of%20Super_Car___05_vrkphh.webp?updatedAt=1775309336739"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              alt="Logo"
             />
           </div>
           <div>
             <div className="sidebar-logo-text">Stock<span>Pro</span></div>
-            <div style={{ fontSize: '0.62rem', color: 'rgba(148,163,184,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '1px' }}>
+            <div style={{ fontSize: '0.62rem', color: portal.accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '1px', opacity: 0.9 }}>
               Billing Portal
             </div>
           </div>

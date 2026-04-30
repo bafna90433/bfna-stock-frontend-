@@ -4,6 +4,7 @@ import { LayoutDashboard, LogOut, Plus, Truck, CheckCircle, Clock, ShoppingBag, 
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { getPortalConfig } from '../../utils/portalConfig';
 
 interface StaffSidebarProps { open?: boolean; onClose?: () => void; }
 
@@ -11,6 +12,8 @@ const StaffSidebar: React.FC<StaffSidebarProps> = ({ open, onClose }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [unseenCount, setUnseenCount] = useState(0);
+  const portal = getPortalConfig();
+  const accentGradient = `linear-gradient(135deg, ${portal.gradientFrom}, ${portal.gradientTo})`;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -50,17 +53,19 @@ const StaffSidebar: React.FC<StaffSidebarProps> = ({ open, onClose }) => {
     <>
       {open && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 199 }} onClick={onClose} />}
       <aside className={`sidebar${open ? ' open' : ''}`}>
+        {/* Portal accent top bar */}
+        <div style={{ height: 3, background: accentGradient, flexShrink: 0 }} />
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon" style={{ overflow: 'hidden', background: 'white' }}>
-            <img 
-              src="https://ik.imagekit.io/rishii/bafnatoys/Copy%20of%20Super_Car___05_vrkphh.webp?updatedAt=1775309336739" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-              alt="Logo" 
+          <div className="sidebar-logo-icon" style={{ overflow: 'hidden', background: 'white', boxShadow: `0 8px 24px -6px ${portal.accentColor}60` }}>
+            <img
+              src="https://ik.imagekit.io/rishii/bafnatoys/Copy%20of%20Super_Car___05_vrkphh.webp?updatedAt=1775309336739"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              alt="Logo"
             />
           </div>
           <div>
             <div className="sidebar-logo-text">Stock<span>Pro</span></div>
-            <div style={{ fontSize: '0.62rem', color: 'rgba(148,163,184,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '1px' }}>Staff Portal</div>
+            <div style={{ fontSize: '0.62rem', color: portal.accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '1px', opacity: 0.9 }}>Staff Portal</div>
           </div>
         </div>
         <nav className="sidebar-nav">
