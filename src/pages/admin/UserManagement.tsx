@@ -140,9 +140,9 @@ const UserManagement: React.FC = () => {
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           color: ROLE_COLORS[u.role], fontWeight: 700, fontSize: '0.85rem'
                         }}>
-                          {u.name.charAt(0).toUpperCase()}
+                          {(u.name || '?').charAt(0).toUpperCase()}
                         </div>
-                        <span style={{ fontWeight: 600 }}>{u.name}</span>
+                        <span style={{ fontWeight: 600 }}>{u.name || '—'}</span>
                       </div>
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>{u.username}</td>
@@ -166,7 +166,7 @@ const UserManagement: React.FC = () => {
                       </button>
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                      {new Date(u.createdAt).toLocaleDateString('en-IN')}
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
