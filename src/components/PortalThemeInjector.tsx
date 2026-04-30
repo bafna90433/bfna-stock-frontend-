@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { getPortalConfig, PortalType } from '../utils/portalConfig';
+import { getPortalConfig, type PortalType } from '../utils/portalConfig';
 
 /** Per-portal CSS variable overrides — applied once on mount */
 const PORTAL_THEMES: Record<PortalType, Record<string, string>> = {
