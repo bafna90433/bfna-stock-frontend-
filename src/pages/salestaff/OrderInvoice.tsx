@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Printer, ArrowLeft, Loader, FileText, Edit2 } from 'lucide-react';
+import { Printer, ArrowLeft, Loader, Edit2 } from 'lucide-react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 

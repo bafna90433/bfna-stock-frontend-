@@ -101,7 +101,6 @@ const DispatchOrder: React.FC = () => {
   const noStockCount = items.filter(i => i.stockStatus === 'no_stock').length;
   const allReady     = noStockCount === 0 && partialCount === 0;
   const nothingReady = readyCount === 0;
-  const canDispatch  = items.some(i => i.qtyDispatched > 0) && !nothingReady;
 
   const isAlreadyOnHold = (order.status === 'partial' && nothingReady) || (order.status === 'waiting' && !allReady);
   const isHoldMode = nothingReady || dispatchType === 'hold';

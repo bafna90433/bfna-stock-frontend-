@@ -69,6 +69,8 @@ const DirectOrder: React.FC = () => {
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   const fetchRecentOrders = async () => {
     setLoadingOrders(true);

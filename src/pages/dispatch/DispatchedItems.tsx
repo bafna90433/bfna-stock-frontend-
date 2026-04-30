@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Truck, RefreshCw, Search, CheckCircle, Package } from 'lucide-react';
+import { Truck, RefreshCw, Search, CheckCircle } from 'lucide-react';
 import api from '../../api/axios';
 
 const DispatchedItems: React.FC = () => {

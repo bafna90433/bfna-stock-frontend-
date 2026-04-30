@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Package, TrendingUp, Tags, LayoutDashboard, LogOut, Plus } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import api from '../../api/axios';
 import toast from 'react-hot-toast';
 
 interface StockManagerSidebarProps {
@@ -9,13 +10,7 @@ interface StockManagerSidebarProps {
   onClose?: () => void;
 }
 
-const menuItems = [
-  { to: '/stock-manager/dashboard', icon: <LayoutDashboard size={17} />, label: 'Dashboard' },
-  { to: '/stock-manager/stock', icon: <TrendingUp size={17} />, label: 'Stock Management' },
-  { to: '/stock-manager/categories', icon: <Tags size={17} />, label: 'Categories' },
-  { to: '/stock-manager/add-product', icon: <Plus size={17} />, label: 'Add Product' },
-  { to: '/stock-manager/products', icon: <Package size={17} />, label: 'Products List' },
-];
+
 
 const StockManagerSidebar: React.FC<StockManagerSidebarProps> = ({ open, onClose }) => {
   const { user, logout } = useAuthStore();

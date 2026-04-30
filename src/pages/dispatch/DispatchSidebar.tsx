@@ -2,18 +2,12 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Truck, LayoutDashboard, LogOut, CheckCircle, Clock, Zap, PackageCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import api from '../../api/axios';
 import toast from 'react-hot-toast';
 
 interface DispatchSidebarProps { open?: boolean; onClose?: () => void; }
 
-const menuItems = [
-  { to: '/dispatch/dashboard',  icon: <LayoutDashboard size={17} />, label: 'Dashboard' },
-  { to: '/dispatch/ready',      icon: <Zap size={17} />,             label: 'Ready to Dispatch' },
-  { to: '/dispatch/orders',     icon: <Truck size={17} />,           label: 'All Pending' },
-  { to: '/dispatch/hold',       icon: <Clock size={17} />,           label: 'Pending & Hold' },
-  { to: '/dispatch/dispatched', icon: <PackageCheck size={17} />,    label: 'Dispatched Items' },
-  { to: '/dispatch/history',    icon: <CheckCircle size={17} />,     label: 'Dispatch History' },
-];
+
 
 const DispatchSidebar: React.FC<DispatchSidebarProps> = ({ open, onClose }) => {
   const { user, logout } = useAuthStore();
