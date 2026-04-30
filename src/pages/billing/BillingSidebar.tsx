@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Wallet, LogOut, LayoutDashboard, Truck, Receipt, Users } from 'lucide-react';
+import { Wallet, LogOut, LayoutDashboard, Truck, Receipt, Users, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -72,9 +72,15 @@ const BillingSidebar: React.FC<BillingSidebarProps> = ({ open, onClose }) => {
             <div className="user-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
             <div className="user-info">
               <div className="user-name">{user?.name}</div>
-              <div className="user-role">Accounts & Billing</div>
+              <div className="user-role">{user?.role === 'admin' ? 'Administrator' : 'Accounts & Billing'}</div>
             </div>
           </div>
+          {user?.role === 'admin' && (
+            <button onClick={() => navigate('/admin/dashboard')} className="btn btn-secondary"
+              style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', fontSize: '0.82rem', marginBottom: '0.5rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#A5B4FC' }}>
+              <ArrowLeft size={15} /> Back to Admin
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="btn btn-secondary"

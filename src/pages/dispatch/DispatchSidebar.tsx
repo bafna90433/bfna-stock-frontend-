@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Truck, LayoutDashboard, LogOut, CheckCircle, Clock, Zap, PackageCheck } from 'lucide-react';
+import { Truck, LayoutDashboard, LogOut, CheckCircle, Clock, Zap, PackageCheck, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -93,9 +93,15 @@ const DispatchSidebar: React.FC<DispatchSidebarProps> = ({ open, onClose }) => {
             <div className="user-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
             <div className="user-info">
               <div className="user-name">{user?.name}</div>
-              <div className="user-role">Dispatch Team</div>
+              <div className="user-role">{user?.role === 'admin' ? 'Administrator' : 'Dispatch Team'}</div>
             </div>
           </div>
+          {user?.role === 'admin' && (
+            <button onClick={() => navigate('/admin/dashboard')} className="btn btn-secondary"
+              style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', fontSize: '0.82rem', marginBottom: '0.5rem', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#A5B4FC' }}>
+              <ArrowLeft size={15} /> Back to Admin
+            </button>
+          )}
           <button onClick={handleLogout} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', fontSize: '0.82rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--sidebar-text)' }}>
             <LogOut size={15} /> Sign Out
           </button>
