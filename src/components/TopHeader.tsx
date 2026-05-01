@@ -6,23 +6,47 @@ import { useAuthStore } from '../store/authStore';
 import { getPortalConfig } from '../utils/portalConfig';
 
 const routeLabels: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/billing': 'Bills',
-  '/billing/balance': 'Balance Pending',
-  '/dispatch/orders': 'Dispatch Orders',
-  '/sale-staff/pending': 'Paper Orders',
-  '/inventory/stock': 'Stock Management',
-  '/inventory/categories': 'Categories',
-  '/inventory/add-product': 'Add Product',
-  '/products': 'Products',
-  '/admin/users': 'User Management',
+  // Admin
+  '/admin/dashboard':   'Admin Dashboard',
+  '/admin/users':       'User Management',
+  '/admin/categories':  'Categories',
+  '/admin/stock':       'Stock Management',
+  '/admin/products':    'Products',
+  // Stock Manager
+  '/stock-manager/dashboard':  'Inventory Dashboard',
+  '/stock-manager/stock':      'Stock Management',
+  '/stock-manager/categories': 'Categories',
+  '/stock-manager/add-product':'Add Product',
+  '/stock-manager/products':   'Products List',
+  // Staff
+  '/sale-staff/dashboard':        'Staff Dashboard',
+  '/sale-staff/manage-orders':    'Manage Orders',
+  '/sale-staff/direct-order':     'New Sales Order',
+  '/sale-staff/dispatched-orders':'Dispatched Orders',
+  '/sale-staff/pending-orders':   'Pending Orders',
+  '/sale-staff/fulfillment':      'Customer Fulfillment',
+  // Dispatch
+  '/dispatch/dashboard':  'Dispatch Dashboard',
+  '/dispatch/ready':      'Ready to Dispatch',
+  '/dispatch/hold':       'Pending & Hold',
+  '/dispatch/dispatched': 'Dispatched Items',
+  '/dispatch/history':    'Dispatch History',
+  '/dispatch/orders':     'All Orders',
+  // Billing
+  '/billing/dashboard':   'Billing Dashboard',
+  '/billing/ready':       'Ready for Bill',
+  '/billing/generated':   'Generated Bills',
+  '/billing/fulfillment': 'Customer Fulfillment',
 };
 
 function getPageTitle(pathname: string): string {
   if (routeLabels[pathname]) return routeLabels[pathname];
+  if (pathname.startsWith('/billing/') && pathname.includes('/create/')) return 'Create Invoice';
   if (pathname.startsWith('/billing/')) return 'Invoice';
-  if (pathname.startsWith('/dispatch/')) return 'Dispatch';
-  return 'StockPro';
+  if (pathname.startsWith('/dispatch/orders/')) return 'Dispatch Order';
+  if (pathname.startsWith('/sale-staff/invoice/')) return 'Order Invoice';
+  if (pathname.startsWith('/sale-staff/edit-order/')) return 'Edit Order';
+  return '';
 }
 
 const typeIcon: Record<string, string> = {
@@ -129,9 +153,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
         <button className="hamburger-btn" onClick={onMenuClick} aria-label="Toggle menu">
           <Menu size={20} />
         </button>
-        <div>
-          <h1 className="top-header-title">{title}</h1>
-        </div>
+        {title && <h1 className="top-header-title">{title}</h1>}
       </div>
 
       <div className="top-header-right">
