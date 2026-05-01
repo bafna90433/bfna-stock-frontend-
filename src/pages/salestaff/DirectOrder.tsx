@@ -6,6 +6,8 @@ import api from '../../api/axios';
 import { debounce } from '../../utils/debounce';
 import OrderPreviewModal from '../../components/OrderPreviewModal';
 
+interface BulkTier { minQty: number; unit: 'pcs' | 'inner' | 'carton'; price: number; }
+
 interface Product {
   _id: string;
   name: string;
@@ -19,6 +21,7 @@ interface Product {
   pcsPerInner: number;
   innerPerCarton: number;
   stock: { availableQty: number };
+  bulkPricingTiers?: BulkTier[];
 }
 interface OrderItem {
   productId: string;
@@ -34,6 +37,9 @@ interface OrderItem {
   totalQtyPcs: number;
   qtyOrdered: number;
   pricePerUnit: number;
+  basePrice: number;            // regular price (wholesaler/retailer)
+  isBulkPriced: boolean;        // true when bulk tier is active
+  bulkPricingTiers: BulkTier[]; // stored for re-evaluation on qty change
   gstRate: number;
   availableQty: number;
 }
@@ -151,7 +157,7 @@ const DirectOrder: React.FC = () => {
   useEffect(() => { if (!isEdit) localStorage.setItem('do_transportName', transportName); }, [transportName, isEdit]);
   useEffect(() => { if (!isEdit) localStorage.setItem('do_notes', notes); }, [notes, isEdit]);
 
-  // Pick price based on customer type
+  // Pick base price based on customer type
   const pickPrice = (p: Product): number => {
     if (customerType === 'wholesaler') {
       return Number(p.wholesalerPrice) || Number(p.pricePerUnit) || 0;
@@ -159,7 +165,32 @@ const DirectOrder: React.FC = () => {
     return Number(p.retailerPrice) || Number(p.pricePerUnit) || 0;
   };
 
-  // When customer type changes, re-price all existing items
+  // Get effective price — checks bulk tiers and returns bulk price if qty qualifies
+  const getEffectivePrice = (
+    basePrice: number,
+    tiers: BulkTier[],
+    totalQtyPcs: number,
+    pcsPerInner: number,
+    innerPerCarton: number
+  ): { price: number; isBulk: boolean } => {
+    if (!tiers?.length || totalQtyPcs <= 0) return { price: basePrice, isBulk: false };
+    const ppi = pcsPerInner > 0 ? pcsPerInner : 1;
+    const ppc = innerPerCarton > 0 ? innerPerCarton : 1;
+    // Convert each tier's minQty to pcs and find highest applicable
+    const applicable = tiers
+      .map(t => ({
+        ...t,
+        minQtyPcs: t.unit === 'inner' ? t.minQty * ppi
+                 : t.unit === 'carton' ? t.minQty * ppc
+                 : t.minQty,
+      }))
+      .filter(t => totalQtyPcs >= t.minQtyPcs)
+      .sort((a, b) => b.minQtyPcs - a.minQtyPcs); // highest threshold first
+    if (applicable.length > 0) return { price: applicable[0].price, isBulk: true };
+    return { price: basePrice, isBulk: false };
+  };
+
+  // When customer type changes, re-price all existing items (with bulk re-evaluation)
   useEffect(() => {
     if (items.length === 0) return;
     (async () => {
@@ -169,7 +200,10 @@ const DirectOrder: React.FC = () => {
         setItems(prev => prev.map(it => {
           const p = fresh.find(f => f._id === it.productId);
           if (!p) return it;
-          return { ...it, pricePerUnit: pickPrice(p) };
+          const base = pickPrice(p);
+          const tiers = p.bulkPricingTiers || it.bulkPricingTiers || [];
+          const { price, isBulk } = getEffectivePrice(base, tiers, it.totalQtyPcs, it.pcsPerInner, it.innerPerCarton);
+          return { ...it, basePrice: base, pricePerUnit: price, isBulkPriced: isBulk, bulkPricingTiers: tiers };
         }));
       } catch { }
     })();
@@ -185,14 +219,19 @@ const DirectOrder: React.FC = () => {
   const addItem = (p: Product) => {
     const existing = items.find(i => i.productId === p._id);
     if (existing) {
-      // just increment looseQty by 1
       const updated = { ...existing, looseQty: existing.looseQty + 1 };
       updated.totalQtyPcs = calcTotalPcs(updated.cartonQty, updated.innerQty, updated.looseQty, updated.pcsPerInner, updated.innerPerCarton);
       updated.qtyOrdered = updated.totalQtyPcs;
+      const { price, isBulk } = getEffectivePrice(updated.basePrice, updated.bulkPricingTiers, updated.totalQtyPcs, updated.pcsPerInner, updated.innerPerCarton);
+      updated.pricePerUnit = price;
+      updated.isBulkPriced = isBulk;
       setItems(items.map(i => i.productId === p._id ? updated : i));
     } else {
       const ppi = Number(p.pcsPerInner) || 1;
       const ipc = Number(p.innerPerCarton) || 1;
+      const base = pickPrice(p);
+      const tiers = p.bulkPricingTiers || [];
+      const { price, isBulk } = getEffectivePrice(base, tiers, 1, ppi, ipc);
       const newItem: OrderItem = {
         productId: p._id,
         productName: p.name,
@@ -206,7 +245,10 @@ const DirectOrder: React.FC = () => {
         looseQty: 1,
         totalQtyPcs: 1,
         qtyOrdered: 1,
-        pricePerUnit: pickPrice(p),
+        basePrice: base,
+        pricePerUnit: price,
+        isBulkPriced: isBulk,
+        bulkPricingTiers: tiers,
         gstRate: applyGst ? (Number(p.gstRate) || defaultGst) : 0,
         availableQty: p.stock?.availableQty || 0,
       };
@@ -226,6 +268,10 @@ const DirectOrder: React.FC = () => {
       const updated = { ...i, [field]: Math.max(0, val) };
       updated.totalQtyPcs = calcTotalPcs(updated.cartonQty, updated.innerQty, updated.looseQty, updated.pcsPerInner, updated.innerPerCarton);
       updated.qtyOrdered = updated.totalQtyPcs || 1;
+      // Re-evaluate bulk pricing whenever qty changes
+      const { price, isBulk } = getEffectivePrice(updated.basePrice, updated.bulkPricingTiers, updated.totalQtyPcs, updated.pcsPerInner, updated.innerPerCarton);
+      updated.pricePerUnit = price;
+      updated.isBulkPriced = isBulk;
       return updated;
     }));
   };
@@ -443,6 +489,11 @@ const DirectOrder: React.FC = () => {
                         <div style={{ fontSize: '0.68rem', color: p.stock?.availableQty > 0 ? 'var(--success)' : 'var(--danger)' }}>
                           {p.stock?.availableQty > 0 ? `${p.stock.availableQty} stock` : 'No stock'}
                         </div>
+                        {p.bulkPricingTiers && p.bulkPricingTiers.length > 0 && customerType === 'wholesaler' && (
+                          <div style={{ fontSize: '0.6rem', color: '#D97706', fontWeight: 700, marginTop: 2 }}>
+                            📦 {p.bulkPricingTiers.length} bulk tier{p.bulkPricingTiers.length > 1 ? 's' : ''}
+                          </div>
+                        )}
                       </div>
                       <Plus size={16} color="var(--primary)" />
                     </div>
@@ -543,6 +594,25 @@ const DirectOrder: React.FC = () => {
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>₹{lineTotal.toFixed(2)}</div>
                         <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: 1 }}>₹{item.pricePerUnit > 0 ? item.pricePerUnit.toFixed(2) : '—'}/pcs</div>
+                        {item.isBulkPriced && (
+                          <div style={{ fontSize: '0.6rem', fontWeight: 700, color: '#D97706', background: 'rgba(245,158,11,0.12)', borderRadius: 4, padding: '1px 5px', marginTop: 3, display: 'inline-block' }}>
+                            📦 Bulk Price
+                          </div>
+                        )}
+                        {!item.isBulkPriced && item.bulkPricingTiers?.length > 0 && item.totalQtyPcs > 0 && (() => {
+                          const ppi = item.pcsPerInner > 0 ? item.pcsPerInner : 1;
+                          const ppc = item.innerPerCarton > 0 ? item.innerPerCarton : 1;
+                          const next = item.bulkPricingTiers
+                            .map(t => ({ ...t, minQtyPcs: t.unit === 'inner' ? t.minQty * ppi : t.unit === 'carton' ? t.minQty * ppc : t.minQty }))
+                            .filter(t => t.minQtyPcs > item.totalQtyPcs)
+                            .sort((a, b) => a.minQtyPcs - b.minQtyPcs)[0];
+                          if (!next) return null;
+                          return (
+                            <div style={{ fontSize: '0.59rem', color: '#92400E', marginTop: 2 }}>
+                              +{next.minQtyPcs - item.totalQtyPcs} pcs → ₹{next.price}/pcs
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Delete */}
