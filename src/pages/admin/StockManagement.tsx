@@ -19,7 +19,7 @@ const StockManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [stockModal, setStockModal] = useState<any>(null);
   const [editModal, setEditModal] = useState<any>(null);
-  const [bulkTiers, setBulkTiers] = useState<{ minQty: string; price: string }[]>([]);
+  const [bulkTiers, setBulkTiers] = useState<{ minQty: string; unit: 'pcs' | 'inner' | 'carton'; price: string }[]>([]);
   const [qty, setQty] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [editForm, setEditForm] = useState<any>({
@@ -89,7 +89,7 @@ const StockManagement: React.FC = () => {
       stock: String(p.stock?.availableQty || 0),
     });
     setEditModal(p);
-    setBulkTiers((p.bulkPricingTiers || []).map((t: any) => ({ minQty: String(t.minQty), price: String(t.price) })));
+    setBulkTiers((p.bulkPricingTiers || []).map((t: any) => ({ minQty: String(t.minQty), unit: t.unit || 'inner', price: String(t.price) })));
   };
 
   const handleEdit = async () => {
@@ -108,7 +108,7 @@ const StockManagement: React.FC = () => {
         wholesalerBillPrice: Number(editForm.wholesalerBillPrice) || 0,
         wholesalerPrice: Number(editForm.wholesalerPrice) || 0,
         wholesalerMrp: Number(editForm.wholesalerMrp) || 0,
-        bulkPricingTiers: bulkTiers.filter(t => t.minQty && t.price).map(t => ({ minQty: Number(t.minQty), price: Number(t.price) })),
+        bulkPricingTiers: bulkTiers.filter(t => t.minQty && t.price).map(t => ({ minQty: Number(t.minQty), unit: t.unit, price: Number(t.price) })),
         retailerPrice: Number(editForm.retailerPrice) || 0,
         retailerMrp: Number(editForm.retailerMrp) || 0,
         pricePerUnit: Number(editForm.retailerPrice) || 0,
@@ -264,7 +264,7 @@ const StockManagement: React.FC = () => {
                             )}
                             {(p.bulkPricingTiers?.length > 0) && (
                               <div style={{ fontSize: '0.65rem', color: '#D97706', fontWeight: 700, background: 'rgba(245,158,11,0.1)', borderRadius: 4, padding: '1px 5px', marginTop: 2, display: 'inline-block' }}>
-                                📦 {p.bulkPricingTiers.length} bulk tier{p.bulkPricingTiers.length > 1 ? 's' : ''}
+                                📦 {p.bulkPricingTiers.map((t: any) => `${t.minQty} ${t.unit || 'pcs'}`).join(' / ')}
                               </div>
                             )}
                           </div>
@@ -511,7 +511,7 @@ const StockManagement: React.FC = () => {
                   📦 Bulk Pricing <span style={{ fontWeight: 500, textTransform: 'none', fontSize: '0.67rem', color: 'var(--text-dim)' }}>(Optional — max 3)</span>
                 </div>
                 {bulkTiers.length < 3 && (
-                  <button type="button" onClick={() => setBulkTiers([...bulkTiers, { minQty: '', price: '' }])}
+                  <button type="button" onClick={() => setBulkTiers([...bulkTiers, { minQty: '', unit: 'inner', price: '' }])}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', fontWeight: 700, color: '#D97706', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '3px 9px', cursor: 'pointer' }}>
                     <Plus size={11} /> Add Tier
                   </button>
@@ -520,28 +520,55 @@ const StockManagement: React.FC = () => {
               {bulkTiers.length === 0 && (
                 <div style={{ fontSize: '0.73rem', color: 'var(--text-dim)', textAlign: 'center', padding: '0.3rem 0' }}>Click "Add Tier" to set bulk discount pricing</div>
               )}
-              {bulkTiers.map((tier, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.55rem', alignItems: 'flex-end', marginBottom: i < bulkTiers.length - 1 ? '0.45rem' : 0 }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.68rem' }}>Min Qty (Tier {i + 1})</label>
-                    <input className="form-control" type="number" min="1" placeholder="e.g. 100"
-                      value={tier.minQty}
-                      onChange={e => { const t = [...bulkTiers]; t[i].minQty = e.target.value; setBulkTiers(t); }}
-                      style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} />
+              {bulkTiers.map((tier, i) => {
+                const ppi = Number(editModal?.pcsPerInner) || 1;
+                const ppc = Number(editModal?.innerPerCarton) || 1;
+                const totalPcs = tier.minQty
+                  ? tier.unit === 'inner' ? Number(tier.minQty) * ppi
+                  : tier.unit === 'carton' ? Number(tier.minQty) * ppc
+                  : Number(tier.minQty)
+                  : 0;
+                return (
+                  <div key={i} style={{ marginBottom: i < bulkTiers.length - 1 ? '0.5rem' : 0 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 1fr auto', gap: '0.5rem', alignItems: 'flex-end' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.67rem' }}>Min Qty (Tier {i + 1})</label>
+                        <input className="form-control" type="number" min="1" placeholder="e.g. 10"
+                          value={tier.minQty}
+                          onChange={e => { const t = [...bulkTiers]; t[i].minQty = e.target.value; setBulkTiers(t); }}
+                          style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.67rem' }}>Unit</label>
+                        <select className="form-control"
+                          value={tier.unit}
+                          onChange={e => { const t = [...bulkTiers]; t[i].unit = e.target.value as any; setBulkTiers(t); }}
+                          style={{ fontWeight: 700, fontSize: '0.88rem' }}>
+                          <option value="inner">Inner</option>
+                          <option value="carton">Carton</option>
+                          <option value="pcs">Pcs</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.67rem' }}>Bulk Price (₹)</label>
+                        <input className="form-control" type="number" min="0" step="0.01" placeholder="0.00"
+                          value={tier.price}
+                          onChange={e => { const t = [...bulkTiers]; t[i].price = e.target.value; setBulkTiers(t); }}
+                          style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} />
+                      </div>
+                      <button type="button" onClick={() => setBulkTiers(bulkTiers.filter((_, j) => j !== i))}
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '0.4rem 0.5rem', cursor: 'pointer', color: 'var(--danger)', height: 36, display: 'flex', alignItems: 'center' }}>
+                        <X size={13} />
+                      </button>
+                    </div>
+                    {tier.minQty && totalPcs > 0 && (
+                      <div style={{ fontSize: '0.68rem', color: '#D97706', fontWeight: 600, marginTop: 3, paddingLeft: 2 }}>
+                        ✓ {tier.minQty} {tier.unit}{Number(tier.minQty) > 1 ? 's' : ''} = {totalPcs.toLocaleString()} Pcs
+                      </div>
+                    )}
                   </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.68rem' }}>Bulk Price (₹)</label>
-                    <input className="form-control" type="number" min="0" step="0.01" placeholder="0.00"
-                      value={tier.price}
-                      onChange={e => { const t = [...bulkTiers]; t[i].price = e.target.value; setBulkTiers(t); }}
-                      style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }} />
-                  </div>
-                  <button type="button" onClick={() => setBulkTiers(bulkTiers.filter((_, j) => j !== i))}
-                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '0.45rem 0.55rem', cursor: 'pointer', color: 'var(--danger)', height: 36, display: 'flex', alignItems: 'center' }}>
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Retailer */}
