@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package, X, Save, Loader, ImageIcon, CheckCircle, Lock } from 'lucide-react';
+import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
@@ -177,10 +178,13 @@ const AddProduct: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="form-group">
-                <label className="form-label">Initial Stock Qty</label>
-                <input className="form-control" type="number" min="0" value={form.initialQty} onChange={e => setForm({ ...form, initialQty: e.target.value })} />
-              </div>
+              <SmartStockInput
+                pcsPerInner={Number(form.pcsPerInner) || 1}
+                pcsPerCarton={Number(form.innerPerCarton) || 1}
+                value={Number(form.initialQty) || 0}
+                onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
+                label="Initial Stock Qty"
+              />
             </div>
 
             {/* Pricing Card — Admin only, locked for stock manager */}

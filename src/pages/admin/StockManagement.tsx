@@ -3,6 +3,7 @@ import {
   Package, Search, Plus, Edit, Loader, X, Save,
   ArrowUp, TrendingDown, Tag, Lock,
 } from 'lucide-react';
+import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { debounce } from '../../utils/debounce';
@@ -339,18 +340,13 @@ const StockManagement: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Quantity to Add</label>
-              <input
-                className="form-control"
-                type="number"
-                min="1"
-                value={qty}
-                onChange={e => setQty(e.target.value)}
-                placeholder="0"
-                autoFocus
-              />
-            </div>
+            <SmartStockInput
+              pcsPerInner={Number(stockModal.product.pcsPerInner) || 1}
+              pcsPerCarton={Number(stockModal.product.innerPerCarton) || 1}
+              value={Number(qty) || 0}
+              onChange={total => setQty(String(total))}
+              label="Quantity to Add"
+            />
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setStockModal(null)}>Cancel</button>
               <button className="btn btn-success" onClick={handleStockAdd} disabled={submitting}>
