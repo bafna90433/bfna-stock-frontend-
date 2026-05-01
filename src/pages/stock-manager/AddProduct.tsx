@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Package, X, Save, Loader, ImageIcon, CheckCircle, Lock } from 'lucide-react';
+import { Package, X, Save, Loader, ImageIcon, CheckCircle } from 'lucide-react';
 import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -67,12 +67,10 @@ const AddProduct: React.FC = () => {
       fd.append('innerPerCarton', form.innerPerCarton || '1');
       // GST removed (always 0)
       fd.append('gstRate', '0');
-      // Prices only sent if admin
-      if (isAdmin) {
-        fd.append('wholesalerPrice', form.wholesalerPrice || '0');
-        fd.append('retailerPrice', form.retailerPrice || '0');
-        fd.append('pricePerUnit', form.retailerPrice || '0'); // legacy fallback
-      }
+      // Prices — available to all roles
+      fd.append('wholesalerPrice', form.wholesalerPrice || '0');
+      fd.append('retailerPrice', form.retailerPrice || '0');
+      fd.append('pricePerUnit', form.retailerPrice || '0'); // legacy fallback
       if (file) fd.append('image', file);
       await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setSuccess(true);
@@ -108,9 +106,7 @@ const AddProduct: React.FC = () => {
         <div>
           <h1 className="page-title">Add Product</h1>
           <p className="page-subtitle">
-            {isAdmin
-              ? 'Add new product with wholesaler & retailer prices'
-              : 'Add new product to inventory — pricing will be set by Admin'}
+            Add new product with stock details and pricing
           </p>
         </div>
         <a href="/stock-manager/products" className="btn btn-secondary">
@@ -187,23 +183,11 @@ const AddProduct: React.FC = () => {
               />
             </div>
 
-            {/* Pricing Card — Admin only, locked for stock manager */}
-            <div className="card" style={{ marginBottom: '1.5rem', position: 'relative', opacity: isAdmin ? 1 : 0.65 }}>
+            {/* Pricing Card — open to all */}
+            <div className="card" style={{ marginBottom: '1.5rem' }}>
               <div className="card-header">
-                <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Pricing
-                  {!isAdmin && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', padding: '0.2rem 0.6rem', background: 'rgba(245,158,11,0.12)', color: '#B45309', borderRadius: '999px', fontWeight: 700 }}>
-                      <Lock size={11} /> Admin Only
-                    </span>
-                  )}
-                </h3>
+                <h3 className="card-title">Pricing</h3>
               </div>
-              {!isAdmin && (
-                <div style={{ padding: '0.85rem 1rem', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: '#92400E', marginBottom: '1rem' }}>
-                  💡 Stock Manager can add the product without pricing. Admin will set the wholesaler & retailer prices later.
-                </div>
-              )}
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">Wholesaler Price (₹)</label>
@@ -213,7 +197,7 @@ const AddProduct: React.FC = () => {
                     value={form.wholesalerPrice}
                     onChange={e => setForm({ ...form, wholesalerPrice: e.target.value })}
                     placeholder="0.00"
-                    disabled={!isAdmin}
+                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
                 </div>
                 <div className="form-group">
@@ -224,7 +208,7 @@ const AddProduct: React.FC = () => {
                     value={form.retailerPrice}
                     onChange={e => setForm({ ...form, retailerPrice: e.target.value })}
                     placeholder="0.00"
-                    disabled={!isAdmin}
+                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
                 </div>
               </div>
