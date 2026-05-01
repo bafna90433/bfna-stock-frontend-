@@ -74,7 +74,6 @@ const AdminDashboard: React.FC = () => {
           { label: 'Stock Management', icon: <BarChart3 size={15} />, to: '/admin/stock', variant: 'primary' },
         ]}
       />
-      </div>
 
       {/* 5 Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
