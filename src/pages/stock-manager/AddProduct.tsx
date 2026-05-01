@@ -55,6 +55,9 @@ const AddProduct: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.sku) return toast.error('Product name and SKU are required');
+    if (!form.wholesalerPrice || Number(form.wholesalerPrice) <= 0) return toast.error('Wholesaler Price is required');
+    if (!form.retailerPrice || Number(form.retailerPrice) <= 0) return toast.error('Retailer Price is required');
+    if (!form.mrp || Number(form.mrp) <= 0) return toast.error('MRP is required');
     setLoading(true);
     try {
       const fd = new FormData();
@@ -192,38 +195,39 @@ const AddProduct: React.FC = () => {
               </div>
               <div className="form-grid">
                 <div className="form-group">
-                  <label className="form-label">Wholesaler Price (₹)</label>
+                  <label className="form-label">Wholesaler Price (₹) *</label>
                   <input
                     className="form-control"
-                    type="number" min="0" step="0.01"
+                    type="number" min="0.01" step="0.01"
                     value={form.wholesalerPrice}
                     onChange={e => setForm({ ...form, wholesalerPrice: e.target.value })}
                     placeholder="0.00"
+                    required
                     style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Retailer Price (₹)</label>
+                  <label className="form-label">Retailer Price (₹) *</label>
                   <input
                     className="form-control"
-                    type="number" min="0" step="0.01"
+                    type="number" min="0.01" step="0.01"
                     value={form.retailerPrice}
                     onChange={e => setForm({ ...form, retailerPrice: e.target.value })}
                     placeholder="0.00"
+                    required
                     style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
                 </div>
               </div>
               <div className="form-group" style={{ marginTop: '0.5rem' }}>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  MRP (₹) <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-dim)', background: 'var(--bg3)', padding: '1px 6px', borderRadius: 4 }}>Optional</span>
-                </label>
+                <label className="form-label">MRP (₹) *</label>
                 <input
                   className="form-control"
-                  type="number" min="0" step="0.01"
+                  type="number" min="0.01" step="0.01"
                   value={form.mrp}
                   onChange={e => setForm({ ...form, mrp: e.target.value })}
                   placeholder="Maximum Retail Price"
+                  required
                   style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                 />
               </div>

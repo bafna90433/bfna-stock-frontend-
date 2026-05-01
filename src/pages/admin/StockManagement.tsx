@@ -87,6 +87,9 @@ const StockManagement: React.FC = () => {
   };
 
   const handleEdit = async () => {
+    if (!editForm.wholesalerPrice || Number(editForm.wholesalerPrice) <= 0) return toast.error('Wholesaler Price is required');
+    if (!editForm.retailerPrice || Number(editForm.retailerPrice) <= 0) return toast.error('Retailer Price is required');
+    if (!editForm.mrp || Number(editForm.mrp) <= 0) return toast.error('MRP is required');
     setSubmitting(true);
     try {
       await api.put(`/products/${editModal._id}`, {
@@ -435,38 +438,39 @@ const StockManagement: React.FC = () => {
             </div>
             <div className="form-grid">
               <div className="form-group">
-                <label className="form-label">Wholesaler Price (₹)</label>
+                <label className="form-label">Wholesaler Price (₹) *</label>
                 <input
                   className="form-control"
-                  type="number" min="0" step="0.01"
+                  type="number" min="0.01" step="0.01"
                   value={editForm.wholesalerPrice}
                   onChange={e => setEditForm({ ...editForm, wholesalerPrice: e.target.value })}
                   placeholder="0.00"
+                  required
                   style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Retailer Price (₹)</label>
+                <label className="form-label">Retailer Price (₹) *</label>
                 <input
                   className="form-control"
-                  type="number" min="0" step="0.01"
+                  type="number" min="0.01" step="0.01"
                   value={editForm.retailerPrice}
                   onChange={e => setEditForm({ ...editForm, retailerPrice: e.target.value })}
                   placeholder="0.00"
+                  required
                   style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                 />
               </div>
             </div>
             <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                MRP (₹) <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-dim)', background: 'var(--bg3)', padding: '1px 6px', borderRadius: 4 }}>Optional</span>
-              </label>
+              <label className="form-label">MRP (₹) *</label>
               <input
                 className="form-control"
-                type="number" min="0" step="0.01"
+                type="number" min="0.01" step="0.01"
                 value={editForm.mrp}
                 onChange={e => setEditForm({ ...editForm, mrp: e.target.value })}
                 placeholder="Maximum Retail Price"
+                required
                 style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
               />
             </div>
