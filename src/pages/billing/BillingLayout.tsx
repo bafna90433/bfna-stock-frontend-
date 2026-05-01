@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import BillingSidebar from './BillingSidebar';
-import TopHeader from '../../components/TopHeader';
 
 const BillingLayout: React.FC = () => {
   const { user, token } = useAuthStore();
@@ -14,8 +13,7 @@ const BillingLayout: React.FC = () => {
   return (
     <div className="app-layout">
       <BillingSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="main-content">
-        <TopHeader onMenuClick={() => setSidebarOpen((p) => !p)} />
+      <main className="main-content no-header">
         <Outlet />
       </main>
     </div>

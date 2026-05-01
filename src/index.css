@@ -120,6 +120,7 @@ body::before {
   z-index: 0;
 }
 .app-layout, .main-content { position: relative; z-index: 1; }
+.main-content.no-header { padding-top: 0 !important; }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
