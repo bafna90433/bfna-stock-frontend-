@@ -127,7 +127,6 @@ const CategoryManagement: React.FC = () => {
               <thead>
                 <tr>
                   <th>Category Name</th>
-                  <th>Description</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -143,7 +142,6 @@ const CategoryManagement: React.FC = () => {
                         <span style={{ fontWeight: 600 }}>{cat.name}</span>
                       </div>
                     </td>
-                    <td style={{ color: 'var(--text-muted)' }}>{cat.description || '-'}</td>
                     <td>
                       {cat.isActive ? (
                         <span className="badge badge-success"><Check size={12} /> Active</span>
@@ -184,16 +182,6 @@ const CategoryManagement: React.FC = () => {
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Action Figures"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea 
-                  className="form-control" 
-                  rows={3}
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  placeholder="Brief description about this category..."
                 />
               </div>
               {isEditing && (
