@@ -99,6 +99,7 @@ function App() {
           <Route path="categories" element={<CategoryManagement />} />
           <Route path="stock" element={<StockManagement />} />
           <Route path="add-product" element={<AddProduct />} />
+          <Route path="edit-product/:id" element={<AddProduct />} />
           <Route path="products" element={<Products />} />
         </Route>
 

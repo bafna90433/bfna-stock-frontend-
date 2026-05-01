@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Search, Edit, Save, Loader, X, Tag } from 'lucide-react';
+import { Package, Plus, Search, Edit } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const Products: React.FC = () => {
@@ -10,15 +11,7 @@ const Products: React.FC = () => {
   const [search, setSearch] = useState('');
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
-
-  const [editModal, setEditModal] = useState<any>(null);
-  const [editForm, setEditForm] = useState<any>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
-
-  useEffect(() => {
-    api.get('/categories').then(r => setCategories(r.data)).catch(console.error);
-  }, []);
+  const navigate = useNavigate();
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -34,40 +27,6 @@ const Products: React.FC = () => {
     return () => clearTimeout(t);
   }, [search]);
 
-  const openEdit = (e: React.MouseEvent, p: any) => {
-    e.stopPropagation();
-    setEditForm({
-      name: p.name,
-      category: p.category || '',
-      description: p.description || '',
-      wholesalerPrice: p.wholesalerPrice ? String(p.wholesalerPrice) : '',
-      retailerPrice: p.retailerPrice ? String(p.retailerPrice) : '',
-      pcsPerInner: String(p.pcsPerInner || 1),
-      innerPerCarton: String(p.innerPerCarton || 1),
-    });
-    setEditModal(p);
-  };
-
-  const handleEdit = async () => {
-    setSubmitting(true);
-    try {
-      await api.put(`/products/${editModal._id}`, {
-        name: editForm.name,
-        category: editForm.category,
-        description: editForm.description,
-        wholesalerPrice: Number(editForm.wholesalerPrice) || 0,
-        retailerPrice: Number(editForm.retailerPrice) || 0,
-        pricePerUnit: Number(editForm.retailerPrice) || 0,
-        pcsPerInner: Number(editForm.pcsPerInner) || 1,
-        innerPerCarton: Number(editForm.innerPerCarton) || 1,
-      });
-      toast.success('Product updated!');
-      setEditModal(null);
-      fetchProducts();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    } finally { setSubmitting(false); }
-  };
 
   return (
     <div className="page-container">
@@ -184,7 +143,7 @@ const Products: React.FC = () => {
                         justifyContent: 'center',
                         gap: '0.4rem',
                       }}
-                      onClick={e => openEdit(e, p)}
+                      onClick={() => navigate(`/stock-manager/edit-product/${p._id}`)}
                     >
                       <Edit size={13} /> Edit Product
                     </button>
@@ -196,89 +155,6 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Combined Edit Modal */}
-      {editModal && (
-        <div className="modal-overlay" onClick={() => setEditModal(null)}>
-          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title"><Edit size={18} /> Edit Product</h3>
-              <button className="modal-close" onClick={() => setEditModal(null)}><X size={16} /></button>
-            </div>
-
-            {/* Product strip */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', padding: '0.85rem 1rem', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
-              {editModal.imageUrl && (
-                <img src={editModal.imageUrl} style={{ width: 46, height: 46, borderRadius: 8, objectFit: 'cover' }} alt="" />
-              )}
-              <div>
-                <div style={{ fontWeight: 700 }}>{editModal.name}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{editModal.sku}</div>
-              </div>
-            </div>
-
-            {/* Product Details */}
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: '0.6rem' }}>Product Details</div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Product Name</label>
-                <input className="form-control" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select className="form-control" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
-                  <option value="" disabled>Select Category</option>
-                  {categories.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Description</label>
-              <input className="form-control" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
-            </div>
-
-            {/* Packaging */}
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0.75rem 0 0.6rem' }}>📦 Packaging</div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Pcs Per Inner</label>
-                <input className="form-control" type="number" min="1" value={editForm.pcsPerInner} onChange={e => setEditForm({ ...editForm, pcsPerInner: e.target.value })} style={{ fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-mono)' }} />
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 4 }}>1 Inner = ? Pcs</p>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Pcs Per Carton</label>
-                <input className="form-control" type="number" min="1" value={editForm.innerPerCarton} onChange={e => setEditForm({ ...editForm, innerPerCarton: e.target.value })} style={{ fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-mono)' }} />
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 4 }}>1 Carton = ? Pcs</p>
-              </div>
-            </div>
-
-            {/* Pricing — Admin only */}
-            {isAdmin && (
-              <>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0.75rem 0 0.6rem' }}>💰 Pricing</div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Wholesaler Price (₹)</label>
-                    <input className="form-control" type="number" min="0" step="0.01" value={editForm.wholesalerPrice} onChange={e => setEditForm({ ...editForm, wholesalerPrice: e.target.value })} placeholder="0.00" style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Retailer Price (₹)</label>
-                    <input className="form-control" type="number" min="0" step="0.01" value={editForm.retailerPrice} onChange={e => setEditForm({ ...editForm, retailerPrice: e.target.value })} placeholder="0.00" style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }} />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleEdit} disabled={submitting}>
-                {submitting ? <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><Save size={16} /> Save Changes</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

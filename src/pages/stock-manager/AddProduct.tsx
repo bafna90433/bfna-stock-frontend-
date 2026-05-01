@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Package, X, Save, Loader, ImageIcon, CheckCircle, Plus } from 'lucide-react';
+import { Package, X, Save, Loader, ImageIcon, CheckCircle, Plus, ArrowLeft } from 'lucide-react';
 import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const AddProduct: React.FC = () => {
   const { user } = useAuthStore();
@@ -16,12 +17,42 @@ const AddProduct: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
 
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const isEdit = !!id;
+
   useEffect(() => {
     api.get('/categories').then(res => {
       setCategories(res.data);
-      if (res.data.length > 0) setForm(f => ({ ...f, category: res.data[0].name }));
+      if (!isEdit && res.data.length > 0) setForm(f => ({ ...f, category: res.data[0].name }));
     }).catch(console.error);
   }, []);
+
+  // Load product data in edit mode
+  useEffect(() => {
+    if (!isEdit) return;
+    api.get(`/products/${id}`).then(res => {
+      const p = res.data;
+      setForm({
+        name: p.name || '',
+        sku: p.sku || '',
+        unit: p.unit || 'pcs',
+        wholesalerPrice: p.wholesalerPrice ? String(p.wholesalerPrice) : '',
+        wholesalerMrp: p.wholesalerMrp ? String(p.wholesalerMrp) : '',
+        retailerPrice: p.retailerPrice ? String(p.retailerPrice) : '',
+        retailerMrp: p.retailerMrp ? String(p.retailerMrp) : '',
+        category: p.category || '',
+        description: p.description || '',
+        initialQty: '0',
+        pcsPerInner: String(p.pcsPerInner ?? 0),
+        innerPerCarton: String(p.innerPerCarton ?? 0),
+      });
+      if (p.bulkPricingTiers?.length) {
+        setBulkTiers(p.bulkPricingTiers.map((t: any) => ({ minQty: String(t.minQty), unit: t.unit || 'inner', price: String(t.price) })));
+      }
+      if (p.imageUrl) setPreview(p.imageUrl);
+    }).catch(() => toast.error('Failed to load product'));
+  }, [id]);
 
   const [form, setForm] = useState({
     name: '',
@@ -56,7 +87,7 @@ const AddProduct: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.sku) return toast.error('Product name and SKU are required');
+    if (!form.name || (!isEdit && !form.sku)) return toast.error('Product name and SKU are required');
     if (!form.wholesalerPrice || Number(form.wholesalerPrice) <= 0) return toast.error('Wholesaler Price is required');
     if (!form.wholesalerMrp || Number(form.wholesalerMrp) <= 0) return toast.error('Wholesaler MRP is required');
     if (!form.retailerPrice || Number(form.retailerPrice) <= 0) return toast.error('Retailer Price is required');
@@ -65,36 +96,42 @@ const AddProduct: React.FC = () => {
     try {
       const fd = new FormData();
       fd.append('name', form.name);
-      fd.append('sku', form.sku);
+      if (!isEdit) fd.append('sku', form.sku);
       fd.append('unit', form.unit);
       fd.append('category', form.category);
       fd.append('description', form.description);
-      fd.append('initialQty', form.initialQty);
-      fd.append('pcsPerInner', form.pcsPerInner || '1');
-      fd.append('innerPerCarton', form.innerPerCarton || '1');
-      // GST removed (always 0)
+      if (!isEdit) fd.append('initialQty', form.initialQty);
+      fd.append('pcsPerInner', form.pcsPerInner || '0');
+      fd.append('innerPerCarton', form.innerPerCarton || '0');
       fd.append('gstRate', '0');
-      // Prices — available to all roles
       fd.append('wholesalerPrice', form.wholesalerPrice || '0');
       fd.append('wholesalerMrp', form.wholesalerMrp || '0');
       const validTiers = bulkTiers.filter(t => t.minQty && t.price).map(t => ({ minQty: Number(t.minQty), unit: t.unit, price: Number(t.price) }));
       fd.append('bulkPricingTiers', JSON.stringify(validTiers));
       fd.append('retailerPrice', form.retailerPrice || '0');
       fd.append('retailerMrp', form.retailerMrp || '0');
-      fd.append('pricePerUnit', form.retailerPrice || '0'); // legacy fallback
+      fd.append('pricePerUnit', form.retailerPrice || '0');
       if (file) fd.append('image', file);
-      await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setSuccess(true);
-      toast.success('Product added successfully!');
-      setTimeout(() => {
-        setSuccess(false);
-        setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
-        setBulkTiers([]);
-        setPreview(null);
-        setFile(null);
-      }, 2000);
+
+      if (isEdit) {
+        await api.put(`/products/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        toast.success('Product updated successfully!');
+        setSuccess(true);
+        setTimeout(() => navigate('/stock-manager/products'), 1500);
+      } else {
+        await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setSuccess(true);
+        toast.success('Product added successfully!');
+        setTimeout(() => {
+          setSuccess(false);
+          setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
+          setBulkTiers([]);
+          setPreview(null);
+          setFile(null);
+        }, 2000);
+      }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to add product');
+      toast.error(err.response?.data?.message || (isEdit ? 'Failed to update product' : 'Failed to add product'));
     } finally { setLoading(false); }
   };
 
@@ -102,11 +139,13 @@ const AddProduct: React.FC = () => {
     return (
       <div className="page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '5rem', marginBottom: '1rem', animation: 'pulse 1s ease-in-out infinite' }}>
-            <CheckCircle size={80} color="var(--success)" strokeWidth={1.5} />
-          </div>
-          <h2 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>Product Added!</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Product saved to database successfully</p>
+          <CheckCircle size={80} color="var(--success)" strokeWidth={1.5} />
+          <h2 style={{ color: 'var(--success)', marginBottom: '0.5rem', marginTop: '1rem' }}>
+            {isEdit ? 'Product Updated!' : 'Product Added!'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            {isEdit ? 'Changes saved successfully' : 'Product saved to database successfully'}
+          </p>
         </div>
       </div>
     );
@@ -116,14 +155,14 @@ const AddProduct: React.FC = () => {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Add Product</h1>
+          <h1 className="page-title">{isEdit ? 'Edit Product' : 'Add Product'}</h1>
           <p className="page-subtitle">
-            Add new product with stock details and pricing
+            {isEdit ? 'Update product details and pricing' : 'Add new product with stock details and pricing'}
           </p>
         </div>
-        <a href="/stock-manager/products" className="btn btn-secondary">
-          <Package size={16} /> View Products
-        </a>
+        <button className="btn btn-secondary" onClick={() => navigate('/stock-manager/products')}>
+          <ArrowLeft size={16} /> Back to Products
+        </button>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -140,8 +179,17 @@ const AddProduct: React.FC = () => {
                   <input className="form-control" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Honda Clutch Wire" required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">SKU *</label>
-                  <input className="form-control" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} placeholder="e.g. HCW-001" required />
+                  <label className="form-label">SKU {!isEdit && '*'}</label>
+                  <input
+                    className="form-control"
+                    value={form.sku}
+                    onChange={e => !isEdit && setForm({ ...form, sku: e.target.value.toUpperCase() })}
+                    placeholder="e.g. HCW-001"
+                    required={!isEdit}
+                    readOnly={isEdit}
+                    style={isEdit ? { background: 'var(--bg3)', color: 'var(--text-muted)', cursor: 'not-allowed' } : {}}
+                  />
+                  {isEdit && <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: 3 }}>SKU cannot be changed</p>}
                 </div>
               </div>
               <div className="form-group">
@@ -186,13 +234,15 @@ const AddProduct: React.FC = () => {
                   </div>
                 )}
               </div>
-              <SmartStockInput
-                pcsPerInner={Number(form.pcsPerInner) || 1}
-                pcsPerCarton={Number(form.innerPerCarton) || 1}
-                value={Number(form.initialQty) || 0}
-                onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
-                label="Initial Stock Qty"
-              />
+              {!isEdit && (
+                <SmartStockInput
+                  pcsPerInner={Number(form.pcsPerInner) || 1}
+                  pcsPerCarton={Number(form.innerPerCarton) || 1}
+                  value={Number(form.initialQty) || 0}
+                  onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
+                  label="Initial Stock Qty"
+                />
+              )}
             </div>
 
             {/* Pricing Card — open to all */}
@@ -340,7 +390,7 @@ const AddProduct: React.FC = () => {
             </div>
 
             <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-              {loading ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Uploading...</> : <><Save size={18} /> Save Product</>}
+              {loading ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> {isEdit ? 'Saving...' : 'Uploading...'}</> : <><Save size={18} /> {isEdit ? 'Save Changes' : 'Save Product'}</>}
             </button>
           </div>
 
