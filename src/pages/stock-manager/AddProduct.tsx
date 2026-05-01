@@ -160,24 +160,24 @@ const AddProduct: React.FC = () => {
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.65rem' }}>📦 Packaging Hierarchy (Carton / Inner / Pcs)</div>
                 <div className="form-grid">
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Pcs Per Inner</label>
+                    <label className="form-label">Pcs Per Inner <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: '0.72rem' }}>(0 = no inner)</span></label>
                     <input
                       className="form-control"
-                      type="number" min="1"
+                      type="number" min="0"
                       value={form.pcsPerInner}
                       onChange={e => setForm({ ...form, pcsPerInner: e.target.value })}
-                      placeholder="e.g. 12"
+                      placeholder="0 if no inner"
                     />
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 3 }}>1 Inner = ? Pcs</p>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Pcs Per Carton</label>
+                    <label className="form-label">Pcs Per Carton <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: '0.72rem' }}>(0 = no carton)</span></label>
                     <input
                       className="form-control"
-                      type="number" min="1"
+                      type="number" min="0"
                       value={form.innerPerCarton}
                       onChange={e => setForm({ ...form, innerPerCarton: e.target.value })}
-                      placeholder="e.g. 20"
+                      placeholder="0 if no carton"
                     />
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 3 }}>1 Carton = ? Pcs</p>
                   </div>

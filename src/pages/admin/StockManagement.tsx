@@ -430,25 +430,25 @@ const StockManagement: React.FC = () => {
             </div>
             <div className="form-grid">
               <div className="form-group">
-                <label className="form-label">Pcs Per Inner</label>
+                <label className="form-label">Pcs Per Inner <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: '0.7rem' }}>(0 = no inner)</span></label>
                 <input
                   className="form-control"
-                  type="number" min="1"
+                  type="number" min="0"
                   value={editForm.pcsPerInner}
                   onChange={e => setEditForm({ ...editForm, pcsPerInner: e.target.value })}
-                  placeholder="e.g. 10"
+                  placeholder="0 if no inner"
                   style={{ fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-mono)' }}
                 />
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 4 }}>1 Inner = ? Pcs</p>
               </div>
               <div className="form-group">
-                <label className="form-label">Pcs Per Carton</label>
+                <label className="form-label">Pcs Per Carton <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: '0.7rem' }}>(0 = no carton)</span></label>
                 <input
                   className="form-control"
-                  type="number" min="1"
+                  type="number" min="0"
                   value={editForm.innerPerCarton}
                   onChange={e => setEditForm({ ...editForm, innerPerCarton: e.target.value })}
-                  placeholder="e.g. 20"
+                  placeholder="0 if no carton"
                   style={{ fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-mono)' }}
                 />
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 4 }}>1 Carton = ? Pcs</p>
