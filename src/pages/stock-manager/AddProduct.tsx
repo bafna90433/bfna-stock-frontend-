@@ -364,7 +364,7 @@ const AddProduct: React.FC = () => {
           <div>
             <div className="card" style={{ position: 'sticky', top: '1rem' }}>
               <div className="card-header">
-                <h3 className="card-title"><ImageIcon size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />Product Image</h3>
+                <h3 className="card-title"><ImageIcon size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />Product Image <span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-dim)', marginLeft: 4 }}>(Optional)</span></h3>
               </div>
               <div
                 className={`image-upload-zone ${dragOver ? 'drag-over' : ''}`}

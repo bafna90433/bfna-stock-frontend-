@@ -92,6 +92,7 @@ const DirectOrder: React.FC = () => {
   // Order image
   const [orderImage, setOrderImage] = useState<File | null>(null);
   const [orderImagePreview, setOrderImagePreview] = useState<string | null>(null);
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
 
   const searchProducts = useCallback(
     debounce(async (q: string) => {
@@ -173,6 +174,8 @@ const DirectOrder: React.FC = () => {
     pcsPerInner: number,
     innerPerCarton: number
   ): { price: number; isBulk: boolean } => {
+    // Bulk pricing only applies to wholesalers
+    if (customerType === 'retailer') return { price: basePrice, isBulk: false };
     if (!tiers?.length || totalQtyPcs <= 0) return { price: basePrice, isBulk: false };
     const ppi = pcsPerInner > 0 ? pcsPerInner : 1;
     const ppc = innerPerCarton > 0 ? innerPerCarton : 1;
@@ -511,112 +514,169 @@ const DirectOrder: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Table Header */}
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 90px 185px 110px 30px', gap: '0.5rem', padding: '0.5rem 0.85rem', fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '2px solid var(--border)', background: 'var(--bg3)' }}>
-                <span>Image</span>
+              {/* ── TABLE HEADER ── */}
+              {/* cols: img | name | sku | stock | ctn | inr | pcs | total | price | amount | del */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '38px 1fr 72px 88px 58px 58px 58px 54px 82px 88px 28px',
+                gap: '0.5rem',
+                alignItems: 'center',
+                padding: '0.35rem 0.75rem',
+                background: 'var(--bg3)',
+                borderRadius: 8,
+                fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)',
+                textTransform: 'uppercase', letterSpacing: '0.07em',
+                borderBottom: '2px solid var(--border)',
+              }}>
+                <span />
                 <span>Item Name</span>
-                <span>SKU</span>
-                <span style={{ textAlign: 'center' }}>Carton / Inner / Pcs</span>
-                <span style={{ textAlign: 'right' }}>Total</span>
-                <span></span>
+                <span style={{ textAlign: 'center' }}>SKU</span>
+                <span style={{ textAlign: 'center' }}>Stock</span>
+                <span style={{ textAlign: 'center' }}>CTN</span>
+                <span style={{ textAlign: 'center' }}>INR</span>
+                <span style={{ textAlign: 'center' }}>PCS</span>
+                <span style={{ textAlign: 'center' }}>Total</span>
+                <span style={{ textAlign: 'center' }}>Price/pc</span>
+                <span style={{ textAlign: 'right' }}>Amount</span>
+                <span />
               </div>
-              <div style={{ flex: 1, overflowY: 'auto', maxHeight: 480 }}>
+
+              {/* ── ITEM ROWS ── */}
+              <div style={{ flex: 1, overflowY: 'auto', maxHeight: 540, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {items.map(item => {
-                  const lineTotal = item.totalQtyPcs * item.pricePerUnit * (1 + (item.gstRate || 0) / 100);
+                  const lineTotal  = item.totalQtyPcs * item.pricePerUnit * (1 + (item.gstRate || 0) / 100);
+                  const remaining  = item.availableQty - item.totalQtyPcs;
+                  const isOut      = item.availableQty === 0;
+                  const isOver     = remaining < 0;
+                  const isLow      = !isOut && !isOver && remaining < 10;
+                  const stockColor = isOut || isOver ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)';
+                  const stockBg    = isOut || isOver ? 'rgba(239,68,68,0.10)' : isLow ? 'rgba(245,158,11,0.10)' : 'rgba(16,185,129,0.10)';
+                  const stockLabel = isOut ? '⚠ No Stock'
+                    : isOver ? `⚠ Over ${Math.abs(remaining)}`
+                    : `${item.availableQty} → ${remaining}`;
+
+                  const nextTierHint = (!item.isBulkPriced && item.bulkPricingTiers?.length && item.totalQtyPcs > 0)
+                    ? (() => {
+                        const ppi = item.pcsPerInner > 0 ? item.pcsPerInner : 1;
+                        const ppc = item.innerPerCarton > 0 ? item.innerPerCarton : 1;
+                        const next = item.bulkPricingTiers
+                          .map(t => ({ ...t, minQtyPcs: t.unit === 'inner' ? t.minQty * ppi : t.unit === 'carton' ? t.minQty * ppc : t.minQty }))
+                          .filter(t => t.minQtyPcs > item.totalQtyPcs)
+                          .sort((a, b) => a.minQtyPcs - b.minQtyPcs)[0];
+                        return next ? { pcs: next.minQtyPcs - item.totalQtyPcs, price: next.price } : null;
+                      })()
+                    : null;
+
                   return (
-                    <div key={item.productId} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 90px 185px 110px 30px', gap: '0.5rem', alignItems: 'center', padding: '0.6rem 0.85rem', borderBottom: '1px solid var(--border-soft)', transition: 'background 0.12s' }}
+                    <div key={item.productId} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '38px 1fr 72px 88px 58px 58px 58px 54px 82px 88px 28px',
+                      gap: '0.5rem',
+                      alignItems: 'center',
+                      padding: '0.6rem 0.75rem',
+                      background: 'var(--card)',
+                      border: '1px solid var(--border)',
+                      borderLeft: `4px solid ${stockColor}`,
+                      borderRadius: 7,
+                      transition: 'background 0.12s',
+                    }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg3)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = '')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'var(--card)')}
                     >
-                      {/* Product Image */}
+                      {/* Image */}
                       {item.imageUrl
-                        ? <img src={item.imageUrl} alt={item.productName} onClick={() => window.open(item.imageUrl, '_blank')} style={{ width: 44, height: 44, borderRadius: 9, objectFit: 'cover', border: '1px solid var(--border)', cursor: 'zoom-in', display: 'block' }} />
-                        : <div style={{ width: 44, height: 44, borderRadius: 9, background: 'var(--bg3)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📦</div>
+                        ? <img src={item.imageUrl} alt={item.productName}
+                            onClick={() => setPreviewImg(item.imageUrl)}
+                            style={{ width: 36, height: 36, borderRadius: 7, objectFit: 'cover', border: '1px solid var(--border)', cursor: 'zoom-in' }} />
+                        : <div style={{ width: 36, height: 36, borderRadius: 7, background: 'var(--bg3)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>📦</div>
                       }
 
-                      {/* Item Name */}
+                      {/* Item Name + sub info */}
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.86rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.productName}</div>
-                        <div style={{ fontSize: '0.63rem', color: 'var(--text-dim)', marginTop: 2 }}>
-                          1Ctn={item.innerPerCarton}pcs • 1Inr={item.pcsPerInner}pcs
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.productName}
                         </div>
-                        <div style={{ marginTop: 3 }}>
-                          {(() => {
-                            const remaining = item.availableQty - item.totalQtyPcs;
-                            const isOver = remaining < 0;
-                            const isOut = item.availableQty === 0;
-                            const isLow = remaining >= 0 && remaining < 10;
-                            return (
-                              <span style={{
-                                fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: 4,
-                                background: isOver ? 'rgba(239,68,68,0.15)' : isOut ? 'rgba(239,68,68,0.12)' : isLow ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
-                                color: isOver || isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)',
-                              }}>
-                                {isOut
-                                  ? '⚠ Out of Stock'
-                                  : isOver
-                                    ? `⚠ Exceeds stock by ${Math.abs(remaining)}`
-                                    : `Stock: ${item.availableQty} → Remaining: ${remaining}`}
-                              </span>
-                            );
-                          })()}
-                        </div>
+                        {item.gstRate > 0 && (
+                          <div style={{ fontSize: '0.59rem', color: 'var(--primary)', marginTop: 1 }}>GST {item.gstRate}%</div>
+                        )}
                       </div>
 
                       {/* SKU */}
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.sku}
-                        {item.gstRate > 0 && <div style={{ fontSize: '0.62rem', color: 'var(--primary)', marginTop: 2 }}>GST {item.gstRate}%</div>}
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 4px', display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.sku}
+                        </span>
                       </div>
 
-                      {/* Carton / Inner / Pcs inputs */}
-                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                        {(['cartonQty', 'innerQty', 'looseQty'] as const).map((field, idx) => (
-                          <div key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                            <span style={{ fontSize: '0.57rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 3 }}>{['Ctn', 'Inr', 'Pcs'][idx]}</span>
-                            <input type="number" min="0"
-                              value={field === 'cartonQty' ? item.cartonQty : field === 'innerQty' ? item.innerQty : item.looseQty}
-                              onChange={e => updatePackaging(item.productId, field, parseInt(e.target.value) || 0)}
-                              style={{ padding: '0.28rem 0.1rem', fontSize: '0.85rem', fontWeight: 700, textAlign: 'center', width: '100%', border: '1.5px solid var(--border)', borderRadius: 7, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                              onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                              onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                            />
+                      {/* Stock */}
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.63rem', fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: stockBg, color: stockColor, whiteSpace: 'nowrap', display: 'inline-block' }}>
+                          {stockLabel}
+                        </span>
+                      </div>
+
+                      {/* CTN input */}
+                      <input type="number" min="0" value={item.cartonQty}
+                        onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: '1.5px solid var(--border)', borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
+                        onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+                      />
+
+                      {/* INR input */}
+                      <input type="number" min="0" value={item.innerQty}
+                        onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: '1.5px solid var(--border)', borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
+                        onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+                      />
+
+                      {/* PCS input */}
+                      <input type="number" min="0" value={item.looseQty}
+                        onChange={e => updatePackaging(item.productId, 'looseQty', parseInt(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: '1.5px solid var(--border)', borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                        onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
+                        onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+                      />
+
+                      {/* Total pcs */}
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                          {item.totalQtyPcs}
+                        </span>
+                      </div>
+
+                      {/* Price/pc — bulk price highlighted when active, next tier hint below */}
+                      <div style={{ textAlign: 'center' }}>
+                        {item.isBulkPriced ? (
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#D97706', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+                              ₹{item.pricePerUnit.toFixed(2)}
+                            </span>
+                            <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#D97706', background: 'rgba(245,158,11,0.13)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 3, padding: '0px 4px', whiteSpace: 'nowrap' }}>
+                              📦 Bulk
+                            </span>
                           </div>
-                        ))}
-                        {/* total pcs badge */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingLeft: '0.3rem', borderLeft: '1px solid var(--border)' }}>
-                          <span style={{ fontSize: '0.57rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, marginBottom: 3 }}>Total</span>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{item.totalQtyPcs}</span>
+                        ) : (
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+                              ₹{item.pricePerUnit.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Amount */}
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
+                          ₹{lineTotal.toFixed(2)}
                         </div>
                       </div>
 
-                      {/* Total (price × qty) */}
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>₹{lineTotal.toFixed(2)}</div>
-                        <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: 1 }}>₹{item.pricePerUnit > 0 ? item.pricePerUnit.toFixed(2) : '—'}/pcs</div>
-                        {item.isBulkPriced && (
-                          <div style={{ fontSize: '0.6rem', fontWeight: 700, color: '#D97706', background: 'rgba(245,158,11,0.12)', borderRadius: 4, padding: '1px 5px', marginTop: 3, display: 'inline-block' }}>
-                            📦 Bulk Price
-                          </div>
-                        )}
-                        {!item.isBulkPriced && item.bulkPricingTiers?.length > 0 && item.totalQtyPcs > 0 && (() => {
-                          const ppi = item.pcsPerInner > 0 ? item.pcsPerInner : 1;
-                          const ppc = item.innerPerCarton > 0 ? item.innerPerCarton : 1;
-                          const next = item.bulkPricingTiers
-                            .map(t => ({ ...t, minQtyPcs: t.unit === 'inner' ? t.minQty * ppi : t.unit === 'carton' ? t.minQty * ppc : t.minQty }))
-                            .filter(t => t.minQtyPcs > item.totalQtyPcs)
-                            .sort((a, b) => a.minQtyPcs - b.minQtyPcs)[0];
-                          if (!next) return null;
-                          return (
-                            <div style={{ fontSize: '0.59rem', color: '#92400E', marginTop: 2 }}>
-                              +{next.minQtyPcs - item.totalQtyPcs} pcs → ₹{next.price}/pcs
-                            </div>
-                          );
-                        })()}
-                      </div>
-
                       {/* Delete */}
-                      <button className="btn btn-danger btn-icon btn-sm" onClick={() => removeItem(item.productId)} style={{ padding: '0.22rem' }}><Trash2 size={12} /></button>
+                      <button className="btn btn-danger btn-icon btn-sm" onClick={() => removeItem(item.productId)} style={{ padding: '0.2rem' }}>
+                        <Trash2 size={11} />
+                      </button>
                     </div>
                   );
                 })}
@@ -666,6 +726,43 @@ const DirectOrder: React.FC = () => {
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Invoice Modal */}
+      {/* ── Image Lightbox ── */}
+      {previewImg && (
+        <div
+          onClick={() => setPreviewImg(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.82)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out',
+          }}
+        >
+          <img
+            src={previewImg}
+            alt="preview"
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '88vw', maxHeight: '88vh',
+              borderRadius: 14,
+              boxShadow: '0 8px 48px rgba(0,0,0,0.6)',
+              border: '3px solid rgba(255,255,255,0.12)',
+              objectFit: 'contain',
+            }}
+          />
+          <button
+            onClick={() => setPreviewImg(null)}
+            style={{
+              position: 'fixed', top: 20, right: 24,
+              background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '50%', width: 38, height: 38,
+              color: '#fff', fontSize: '1.1rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+            }}
+          >✕</button>
+        </div>
+      )}
+
       {showInvoice && (() => {
         const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const getUnit = (item: any) => { if (item.cartonQty > 0) return 'CARTON'; if (item.innerQty > 0) return 'INNER'; return 'PCS'; };
