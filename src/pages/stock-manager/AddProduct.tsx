@@ -29,6 +29,7 @@ const AddProduct: React.FC = () => {
     unit: 'pcs',
     wholesalerPrice: '',
     retailerPrice: '',
+    mrp: '',
     category: '',
     description: '',
     initialQty: '0',
@@ -70,6 +71,7 @@ const AddProduct: React.FC = () => {
       // Prices — available to all roles
       fd.append('wholesalerPrice', form.wholesalerPrice || '0');
       fd.append('retailerPrice', form.retailerPrice || '0');
+      fd.append('mrp', form.mrp || '0');
       fd.append('pricePerUnit', form.retailerPrice || '0'); // legacy fallback
       if (file) fd.append('image', file);
       await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -77,7 +79,7 @@ const AddProduct: React.FC = () => {
       toast.success('Product added successfully!');
       setTimeout(() => {
         setSuccess(false);
-        setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', retailerPrice: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
+        setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', retailerPrice: '', mrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
         setPreview(null);
         setFile(null);
       }, 2000);
@@ -211,6 +213,19 @@ const AddProduct: React.FC = () => {
                     style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
                 </div>
+              </div>
+              <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  MRP (₹) <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-dim)', background: 'var(--bg3)', padding: '1px 6px', borderRadius: 4 }}>Optional</span>
+                </label>
+                <input
+                  className="form-control"
+                  type="number" min="0" step="0.01"
+                  value={form.mrp}
+                  onChange={e => setForm({ ...form, mrp: e.target.value })}
+                  placeholder="Maximum Retail Price"
+                  style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                />
               </div>
             </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Package, Search, Plus, Edit, Loader, X, Save,
-  ArrowUp, TrendingDown, Tag, Lock,
+  Package, Search, Edit, Loader, X, Save,
+  ArrowUp, TrendingDown, Tag,
 } from 'lucide-react';
 import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
@@ -28,6 +28,7 @@ const StockManagement: React.FC = () => {
     description: '',
     wholesalerPrice: '',
     retailerPrice: '',
+    mrp: '',
     pcsPerInner: '1',
     innerPerCarton: '1',
     stock: '',
@@ -77,6 +78,7 @@ const StockManagement: React.FC = () => {
       description: p.description || '',
       wholesalerPrice: p.wholesalerPrice ? String(p.wholesalerPrice) : '',
       retailerPrice: p.retailerPrice ? String(p.retailerPrice) : '',
+      mrp: p.mrp ? String(p.mrp) : '',
       pcsPerInner: String(p.pcsPerInner || 1),
       innerPerCarton: String(p.innerPerCarton || 1),
       stock: String(p.stock?.availableQty || 0),
@@ -94,6 +96,7 @@ const StockManagement: React.FC = () => {
         description: editForm.description,
         wholesalerPrice: Number(editForm.wholesalerPrice) || 0,
         retailerPrice: Number(editForm.retailerPrice) || 0,
+        mrp: Number(editForm.mrp) || 0,
         pricePerUnit: Number(editForm.retailerPrice) || 0,
         pcsPerInner: Number(editForm.pcsPerInner) || 1,
         innerPerCarton: Number(editForm.innerPerCarton) || 1,
@@ -206,6 +209,7 @@ const StockManagement: React.FC = () => {
                   <th>Unit</th>
                   <th>Wholesaler ₹</th>
                   <th>Retailer ₹</th>
+                  <th>MRP ₹</th>
                   <th>Stock</th>
                   <th>Actions</th>
                 </tr>
@@ -245,6 +249,11 @@ const StockManagement: React.FC = () => {
                           ? <span style={{ color: 'var(--primary)' }}>₹{rp.toFixed(2)}</span>
                           : <span style={{ color: 'var(--text-dim)', fontWeight: 500, fontSize: '0.78rem' }}>Not set</span>}
                       </td>
+                      <td style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                        {Number(p.mrp) > 0
+                          ? <span style={{ color: '#D97706' }}>₹{Number(p.mrp).toFixed(2)}</span>
+                          : <span style={{ color: 'var(--text-dim)', fontWeight: 500, fontSize: '0.78rem' }}>—</span>}
+                      </td>
                       <td>
                         <span style={{
                           fontWeight: 800,
@@ -263,48 +272,24 @@ const StockManagement: React.FC = () => {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                          {/* Single Edit button — opens combined modal */}
-                          {isAdmin ? (
-                            <button
-                              className="btn btn-sm"
-                              title="Edit Product"
-                              onClick={() => openEdit(p)}
-                              style={{
-                                background: noPrice
-                                  ? 'linear-gradient(135deg, #F59E0B, #D97706)'
-                                  : 'var(--primary-50)',
-                                color: noPrice ? 'white' : 'var(--primary)',
-                                padding: '0.4rem 0.75rem',
-                                fontWeight: 700,
-                                gap: '0.3rem',
-                                boxShadow: noPrice ? '0 4px 12px -4px rgba(245,158,11,0.5)' : 'none',
-                              }}
-                            >
-                              <Edit size={13} />
-                              {noPrice ? 'Set Price' : 'Edit'}
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                className="btn btn-secondary btn-icon btn-sm"
-                                title="Edit Product"
-                                onClick={() => openEdit(p)}
-                              >
-                                <Edit size={14} />
-                              </button>
-                              <span
-                                title="Only Admin can set price"
-                                style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-                                  padding: '0.35rem 0.6rem', borderRadius: 8,
-                                  background: 'rgba(245,158,11,0.1)', color: '#B45309',
-                                  fontSize: '0.72rem', fontWeight: 700,
-                                }}
-                              >
-                                <Lock size={12} /> Price: Admin
-                              </span>
-                            </>
-                          )}
+                          <button
+                            className="btn btn-sm"
+                            title="Edit Product"
+                            onClick={() => openEdit(p)}
+                            style={{
+                              background: noPrice
+                                ? 'linear-gradient(135deg, #F59E0B, #D97706)'
+                                : 'var(--primary-50)',
+                              color: noPrice ? 'white' : 'var(--primary)',
+                              padding: '0.4rem 0.75rem',
+                              fontWeight: 700,
+                              gap: '0.3rem',
+                              boxShadow: noPrice ? '0 4px 12px -4px rgba(245,158,11,0.5)' : 'none',
+                            }}
+                          >
+                            <Edit size={13} />
+                            {noPrice ? 'Set Price' : 'Edit'}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -444,41 +429,50 @@ const StockManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* — Pricing (Admin only) — */}
-            {isAdmin && (
-              <>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0.75rem 0 0.6rem' }}>
-                  💰 Pricing
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Wholesaler Price (₹)</label>
-                    <input
-                      className="form-control"
-                      type="number" min="0" step="0.01"
-                      value={editForm.wholesalerPrice}
-                      onChange={e => setEditForm({ ...editForm, wholesalerPrice: e.target.value })}
-                      placeholder="0.00"
-                      style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Retailer Price (₹)</label>
-                    <input
-                      className="form-control"
-                      type="number" min="0" step="0.01"
-                      value={editForm.retailerPrice}
-                      onChange={e => setEditForm({ ...editForm, retailerPrice: e.target.value })}
-                      placeholder="0.00"
-                      style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
-                    />
-                  </div>
-                </div>
-                <div style={{ padding: '0.65rem 1rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: '#047857', marginBottom: '1rem' }}>
-                  💡 Prices auto-apply when Sale Staff selects customer type while creating an order.
-                </div>
-              </>
-            )}
+            {/* — Pricing — */}
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0.75rem 0 0.6rem' }}>
+              💰 Pricing
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Wholesaler Price (₹)</label>
+                <input
+                  className="form-control"
+                  type="number" min="0" step="0.01"
+                  value={editForm.wholesalerPrice}
+                  onChange={e => setEditForm({ ...editForm, wholesalerPrice: e.target.value })}
+                  placeholder="0.00"
+                  style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Retailer Price (₹)</label>
+                <input
+                  className="form-control"
+                  type="number" min="0" step="0.01"
+                  value={editForm.retailerPrice}
+                  onChange={e => setEditForm({ ...editForm, retailerPrice: e.target.value })}
+                  placeholder="0.00"
+                  style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                MRP (₹) <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-dim)', background: 'var(--bg3)', padding: '1px 6px', borderRadius: 4 }}>Optional</span>
+              </label>
+              <input
+                className="form-control"
+                type="number" min="0" step="0.01"
+                value={editForm.mrp}
+                onChange={e => setEditForm({ ...editForm, mrp: e.target.value })}
+                placeholder="Maximum Retail Price"
+                style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+              />
+            </div>
+            <div style={{ padding: '0.65rem 1rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: '#047857', marginBottom: '1rem' }}>
+              💡 Prices auto-apply when Sale Staff selects customer type while creating an order.
+            </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
