@@ -28,8 +28,9 @@ const AddProduct: React.FC = () => {
     sku: '',
     unit: 'pcs',
     wholesalerPrice: '',
+    wholesalerMrp: '',
     retailerPrice: '',
-    mrp: '',
+    retailerMrp: '',
     category: '',
     description: '',
     initialQty: '0',
@@ -56,8 +57,9 @@ const AddProduct: React.FC = () => {
     e.preventDefault();
     if (!form.name || !form.sku) return toast.error('Product name and SKU are required');
     if (!form.wholesalerPrice || Number(form.wholesalerPrice) <= 0) return toast.error('Wholesaler Price is required');
+    if (!form.wholesalerMrp || Number(form.wholesalerMrp) <= 0) return toast.error('Wholesaler MRP is required');
     if (!form.retailerPrice || Number(form.retailerPrice) <= 0) return toast.error('Retailer Price is required');
-    if (!form.mrp || Number(form.mrp) <= 0) return toast.error('MRP is required');
+    if (!form.retailerMrp || Number(form.retailerMrp) <= 0) return toast.error('Retailer MRP is required');
     setLoading(true);
     try {
       const fd = new FormData();
@@ -73,8 +75,9 @@ const AddProduct: React.FC = () => {
       fd.append('gstRate', '0');
       // Prices — available to all roles
       fd.append('wholesalerPrice', form.wholesalerPrice || '0');
+      fd.append('wholesalerMrp', form.wholesalerMrp || '0');
       fd.append('retailerPrice', form.retailerPrice || '0');
-      fd.append('mrp', form.mrp || '0');
+      fd.append('retailerMrp', form.retailerMrp || '0');
       fd.append('pricePerUnit', form.retailerPrice || '0'); // legacy fallback
       if (file) fd.append('image', file);
       await api.post('/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -82,7 +85,7 @@ const AddProduct: React.FC = () => {
       toast.success('Product added successfully!');
       setTimeout(() => {
         setSuccess(false);
-        setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', retailerPrice: '', mrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
+        setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
         setPreview(null);
         setFile(null);
       }, 2000);
@@ -193,43 +196,71 @@ const AddProduct: React.FC = () => {
               <div className="card-header">
                 <h3 className="card-title">Pricing</h3>
               </div>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Wholesaler Price (₹) *</label>
-                  <input
-                    className="form-control"
-                    type="number" min="0.01" step="0.01"
-                    value={form.wholesalerPrice}
-                    onChange={e => setForm({ ...form, wholesalerPrice: e.target.value })}
-                    placeholder="0.00"
-                    required
-                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
-                  />
+
+              {/* Wholesaler row */}
+              <div style={{ padding: '0.75rem 0.85rem', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 10, marginBottom: '0.85rem' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                  🏭 Wholesaler
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Retailer Price (₹) *</label>
-                  <input
-                    className="form-control"
-                    type="number" min="0.01" step="0.01"
-                    value={form.retailerPrice}
-                    onChange={e => setForm({ ...form, retailerPrice: e.target.value })}
-                    placeholder="0.00"
-                    required
-                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
-                  />
+                <div className="form-grid">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Price (₹) *</label>
+                    <input
+                      className="form-control"
+                      type="number" min="0.01" step="0.01"
+                      value={form.wholesalerPrice}
+                      onChange={e => setForm({ ...form, wholesalerPrice: e.target.value })}
+                      placeholder="0.00"
+                      required
+                      style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">MRP (₹) *</label>
+                    <input
+                      className="form-control"
+                      type="number" min="0.01" step="0.01"
+                      value={form.wholesalerMrp}
+                      onChange={e => setForm({ ...form, wholesalerMrp: e.target.value })}
+                      placeholder="0.00"
+                      required
+                      style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="form-group" style={{ marginTop: '0.5rem' }}>
-                <label className="form-label">MRP (₹) *</label>
-                <input
-                  className="form-control"
-                  type="number" min="0.01" step="0.01"
-                  value={form.mrp}
-                  onChange={e => setForm({ ...form, mrp: e.target.value })}
-                  placeholder="Maximum Retail Price"
-                  required
-                  style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
-                />
+
+              {/* Retailer row */}
+              <div style={{ padding: '0.75rem 0.85rem', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 10 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                  🛒 Retailer
+                </div>
+                <div className="form-grid">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Price (₹) *</label>
+                    <input
+                      className="form-control"
+                      type="number" min="0.01" step="0.01"
+                      value={form.retailerPrice}
+                      onChange={e => setForm({ ...form, retailerPrice: e.target.value })}
+                      placeholder="0.00"
+                      required
+                      style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">MRP (₹) *</label>
+                    <input
+                      className="form-control"
+                      type="number" min="0.01" step="0.01"
+                      value={form.retailerMrp}
+                      onChange={e => setForm({ ...form, retailerMrp: e.target.value })}
+                      placeholder="0.00"
+                      required
+                      style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
