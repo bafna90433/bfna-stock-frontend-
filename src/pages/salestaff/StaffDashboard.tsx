@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, CheckCircle, ShoppingCart, Plus, Truck, RefreshCw } from 'lucide-react';
+import DashboardHero from '../../components/DashboardHero';
 import api from '../../api/axios';
 import UrgentNotifBanner from '../../components/UrgentNotifBanner';
 import { useAuthStore } from '../../store/authStore';
@@ -46,20 +47,21 @@ const StaffDashboard: React.FC = () => {
   return (
     <div className="page-container">
       <UrgentNotifBanner />
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Staff Portal</h1>
-          <p className="page-subtitle">Welcome back, {user?.name}. Create new orders & track deliveries.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.65rem' }}>
-          <button className="btn btn-secondary btn-icon" onClick={fetchData} title="Refresh">
-            <RefreshCw size={16} />
-          </button>
-          <Link to="/sale-staff/direct-order" className="btn btn-primary">
-            <Plus size={16} /> Make Sales Order
-          </Link>
-        </div>
-      </div>
+      <DashboardHero
+        title="Sales Staff Portal"
+        subtitle="Create orders, track deliveries, and manage customer requests."
+        onRefresh={fetchData}
+        stats={[
+          { label: 'Total Orders', value: loading ? '—' : stats.total ?? 0, color: '#6366F1' },
+          { label: 'Pending', value: loading ? '—' : stats.pending ?? 0, color: '#F59E0B' },
+          { label: 'Dispatched', value: loading ? '—' : stats.dispatched ?? 0, color: '#06B6D4' },
+          { label: 'Paid', value: loading ? '—' : stats.paid ?? 0, color: '#10B981' },
+        ]}
+        actions={[
+          { label: 'Manage Orders', icon: <ShoppingCart size={15} />, to: '/sale-staff/manage-orders', variant: 'secondary' },
+          { label: 'New Sales Order', icon: <Plus size={15} />, to: '/sale-staff/direct-order', variant: 'primary' },
+        ]}
+      />
 
       {/* Stat Cards */}
       <div className="stats-grid">

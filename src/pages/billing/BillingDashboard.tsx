@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Clock, AlertTriangle, IndianRupee, FileText, Wallet, ArrowUpRight, ArrowRight, RefreshCw } from 'lucide-react';
+import { Clock, AlertTriangle, IndianRupee, FileText, Wallet, ArrowUpRight, ArrowRight } from 'lucide-react';
+import DashboardHero from '../../components/DashboardHero';
 import api from '../../api/axios';
 import UrgentNotifBanner from '../../components/UrgentNotifBanner';
 import { useAuthStore } from '../../store/authStore';
@@ -48,24 +49,21 @@ const BillingDashboard: React.FC = () => {
     <div style={{ padding: '1.75rem 2rem', width: '100%', boxSizing: 'border-box' }}>
       <UrgentNotifBanner />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Billing Dashboard</h1>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>
-            Welcome back, {user?.name}. Here's the financial overview.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => fetchData(true)} title="Refresh" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <RefreshCw size={15} style={{ color: 'var(--text-muted)', animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-          </button>
-          <Link to="/billing/generated" className="btn btn-primary" style={{ gap: '0.4rem' }}>
-            <FileText size={15} /> View Bills
-          </Link>
-        </div>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <DashboardHero
+        title="Billing Dashboard"
+        subtitle="Manage invoices, track payments, and monitor financial overview."
+        onRefresh={() => fetchData(true)}
+        refreshing={refreshing}
+        stats={[
+          { label: 'Pending Bills', value: loading ? '—' : stats.pendingBills ?? 0, color: '#F59E0B' },
+          { label: 'Unpaid', value: loading ? '—' : stats.unpaidBills ?? 0, color: '#EF4444' },
+          { label: 'Collected', value: loading ? '—' : `₹${((stats.totalCollected || 0) / 1000).toFixed(0)}k`, color: '#10B981' },
+        ]}
+        actions={[
+          { label: 'Ready for Bill', icon: <FileText size={15} />, to: '/billing/ready', variant: 'secondary' },
+          { label: 'View Bills', icon: <FileText size={15} />, to: '/billing/generated', variant: 'primary' },
+        ]}
+      />
 
       {/* 3 Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>

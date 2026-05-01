@@ -4,6 +4,7 @@ import {
   Package, TrendingUp, AlertTriangle, Tags, Plus,
   BarChart3, RefreshCw, CheckCircle, ArrowUpRight,
 } from 'lucide-react';
+import DashboardHero from '../../components/DashboardHero';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
 import { Link } from 'react-router-dom';
@@ -59,22 +60,22 @@ const StockManagerDashboard: React.FC = () => {
     <div style={{ padding: '1.75rem 2rem', width: '100%', boxSizing: 'border-box' }}>
       <UrgentNotifBanner />
 
-      {/* ── Header Row ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Inventory Dashboard</h1>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>Welcome, {user?.name}. Here's your inventory overview.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => fetchData(true)} title="Refresh" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <RefreshCw size={15} style={{ color: 'var(--text-muted)', animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-          </button>
-          <Link to="/stock-manager/add-product" className="btn btn-primary" style={{ gap: '0.4rem' }}>
-            <Plus size={15} /> Add Product
-          </Link>
-        </div>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <DashboardHero
+        title="Inventory Dashboard"
+        subtitle="Monitor stock levels, manage products, and track low stock alerts."
+        onRefresh={() => fetchData(true)}
+        refreshing={refreshing}
+        stats={[
+          { label: 'Products', value: loading ? '—' : stats.totalProducts ?? 0, color: '#10B981' },
+          { label: 'Low Stock', value: loading ? '—' : stats.lowStock ?? 0, color: '#F59E0B' },
+          { label: 'Out of Stock', value: loading ? '—' : stats.outOfStock ?? 0, color: '#EF4444' },
+          { label: 'Categories', value: loading ? '—' : stats.totalCategories ?? 0, color: '#3B82F6' },
+        ]}
+        actions={[
+          { label: 'Manage Stock', icon: <BarChart3 size={15} />, to: '/stock-manager/stock', variant: 'secondary' },
+          { label: 'Add Product', icon: <Plus size={15} />, to: '/stock-manager/add-product', variant: 'primary' },
+        ]}
+      />
 
       {/* ── Stat Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>

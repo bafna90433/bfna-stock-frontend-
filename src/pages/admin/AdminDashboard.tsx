@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ShoppingCart, Clock, Truck, Receipt, CheckCircle, Users, BarChart3, ArrowUpRight, ArrowRight, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Clock, Truck, Receipt, CheckCircle, Users, BarChart3, ArrowUpRight, ArrowRight } from 'lucide-react';
+import DashboardHero from '../../components/DashboardHero';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
 import { Link } from 'react-router-dom';
@@ -57,17 +58,22 @@ const AdminDashboard: React.FC = () => {
     <div style={{ padding: '1.75rem 2rem', width: '100%', boxSizing: 'border-box' }}>
       <UrgentNotifBanner />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Admin Dashboard</h1>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>
-            Welcome back, {user?.name}. Here's the system overview.
-          </p>
-        </div>
-        <button onClick={() => fetchData(true)} title="Refresh" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <RefreshCw size={16} style={{ color: 'var(--text-muted)', animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-        </button>
+      <DashboardHero
+        title="Admin Dashboard"
+        subtitle="Full system overview — orders, dispatches, billing, stock & users."
+        onRefresh={() => fetchData(true)}
+        refreshing={refreshing}
+        stats={[
+          { label: 'Total Orders', value: loading ? '—' : stats.total ?? 0, color: '#6366F1' },
+          { label: 'Pending', value: loading ? '—' : stats.pending ?? 0, color: '#F59E0B' },
+          { label: 'Dispatched', value: loading ? '—' : stats.dispatched ?? 0, color: '#06B6D4' },
+          { label: 'Paid', value: loading ? '—' : stats.paid ?? 0, color: '#10B981' },
+        ]}
+        actions={[
+          { label: 'User Management', icon: <Users size={15} />, to: '/admin/users', variant: 'secondary' },
+          { label: 'Stock Management', icon: <BarChart3 size={15} />, to: '/admin/stock', variant: 'primary' },
+        ]}
+      />
       </div>
 
       {/* 5 Stat Cards */}

@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Truck, Clock, CheckCircle, ArrowUpRight, ArrowRight, RefreshCw } from 'lucide-react';
+import { Truck, Clock, CheckCircle, ArrowUpRight, ArrowRight } from 'lucide-react';
 import api from '../../api/axios';
 import UrgentNotifBanner from '../../components/UrgentNotifBanner';
 import { useAuthStore } from '../../store/authStore';
 import { Link } from 'react-router-dom';
 import OrderPreviewModal from '../../components/OrderPreviewModal';
+import DashboardHero from '../../components/DashboardHero';
 
 const DispatchDashboard: React.FC = () => {
   const { user } = useAuthStore();
@@ -40,24 +41,21 @@ const DispatchDashboard: React.FC = () => {
     <div style={{ padding: '1.75rem 2rem', width: '100%', boxSizing: 'border-box' }}>
       <UrgentNotifBanner />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Dispatch Dashboard</h1>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0' }}>
-            Welcome back, {user?.name}. Here are the orders ready for dispatch.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => fetchData(true)} title="Refresh" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <RefreshCw size={15} style={{ color: 'var(--text-muted)', animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-          </button>
-          <Link to="/dispatch/orders" className="btn btn-primary" style={{ gap: '0.4rem' }}>
-            <Truck size={15} /> View Orders
-          </Link>
-        </div>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <DashboardHero
+        title="Dispatch Dashboard"
+        subtitle="Track and manage outgoing orders. Mark dispatches and update delivery status."
+        onRefresh={() => fetchData(true)}
+        refreshing={refreshing}
+        stats={[
+          { label: 'Pending', value: stats.pendingDispatch ?? '—', color: '#F59E0B' },
+          { label: 'Today', value: stats.dispatchedToday ?? '—', color: '#10B981' },
+          { label: 'Total', value: stats.totalDispatches ?? '—', color: '#06B6D4' },
+        ]}
+        actions={[
+          { label: 'Ready to Dispatch', icon: <Truck size={15} />, to: '/dispatch/ready', variant: 'secondary' },
+          { label: 'View All Orders', icon: <Truck size={15} />, to: '/dispatch/orders', variant: 'primary' },
+        ]}
+      />
 
       {/* Stat Cards — 3 columns */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
