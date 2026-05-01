@@ -27,6 +27,7 @@ const AddProduct: React.FC = () => {
     name: '',
     sku: '',
     unit: 'pcs',
+    wholesalerBillPrice: '',
     wholesalerPrice: '',
     wholesalerMrp: '',
     retailerPrice: '',
@@ -56,6 +57,7 @@ const AddProduct: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.sku) return toast.error('Product name and SKU are required');
+    if (!form.wholesalerBillPrice || Number(form.wholesalerBillPrice) <= 0) return toast.error('Wholesaler Bill Price is required');
     if (!form.wholesalerPrice || Number(form.wholesalerPrice) <= 0) return toast.error('Wholesaler Price is required');
     if (!form.wholesalerMrp || Number(form.wholesalerMrp) <= 0) return toast.error('Wholesaler MRP is required');
     if (!form.retailerPrice || Number(form.retailerPrice) <= 0) return toast.error('Retailer Price is required');
@@ -74,6 +76,7 @@ const AddProduct: React.FC = () => {
       // GST removed (always 0)
       fd.append('gstRate', '0');
       // Prices — available to all roles
+      fd.append('wholesalerBillPrice', form.wholesalerBillPrice || '0');
       fd.append('wholesalerPrice', form.wholesalerPrice || '0');
       fd.append('wholesalerMrp', form.wholesalerMrp || '0');
       fd.append('retailerPrice', form.retailerPrice || '0');
@@ -85,7 +88,7 @@ const AddProduct: React.FC = () => {
       toast.success('Product added successfully!');
       setTimeout(() => {
         setSuccess(false);
-        setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
+        setForm({ name: '', sku: '', unit: 'pcs', wholesalerBillPrice: '', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
         setPreview(null);
         setFile(null);
       }, 2000);
@@ -202,9 +205,22 @@ const AddProduct: React.FC = () => {
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
                   🏭 Wholesaler
                 </div>
-                <div className="form-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Price (₹) *</label>
+                    <label className="form-label">Bill Price (₹) *</label>
+                    <input
+                      className="form-control"
+                      type="number" min="0.01" step="0.01"
+                      value={form.wholesalerBillPrice}
+                      onChange={e => setForm({ ...form, wholesalerBillPrice: e.target.value })}
+                      placeholder="0.00"
+                      required
+                      style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    />
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: 3 }}>Purchase cost</p>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Selling Price (₹) *</label>
                     <input
                       className="form-control"
                       type="number" min="0.01" step="0.01"
@@ -214,6 +230,7 @@ const AddProduct: React.FC = () => {
                       required
                       style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                     />
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: 3 }}>Price to wholesaler</p>
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">MRP (₹) *</label>
@@ -226,6 +243,7 @@ const AddProduct: React.FC = () => {
                       required
                       style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                     />
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: 3 }}>Max retail price</p>
                   </div>
                 </div>
               </div>

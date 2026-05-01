@@ -26,6 +26,7 @@ const StockManagement: React.FC = () => {
     category: '',
     unit: '',
     description: '',
+    wholesalerBillPrice: '',
     wholesalerPrice: '',
     wholesalerMrp: '',
     retailerPrice: '',
@@ -77,6 +78,7 @@ const StockManagement: React.FC = () => {
       category: p.category || '',
       unit: p.unit,
       description: p.description || '',
+      wholesalerBillPrice: p.wholesalerBillPrice ? String(p.wholesalerBillPrice) : '',
       wholesalerPrice: p.wholesalerPrice ? String(p.wholesalerPrice) : '',
       wholesalerMrp: p.wholesalerMrp ? String(p.wholesalerMrp) : '',
       retailerPrice: p.retailerPrice ? String(p.retailerPrice) : '',
@@ -89,6 +91,7 @@ const StockManagement: React.FC = () => {
   };
 
   const handleEdit = async () => {
+    if (!editForm.wholesalerBillPrice || Number(editForm.wholesalerBillPrice) <= 0) return toast.error('Wholesaler Bill Price is required');
     if (!editForm.wholesalerPrice || Number(editForm.wholesalerPrice) <= 0) return toast.error('Wholesaler Price is required');
     if (!editForm.wholesalerMrp || Number(editForm.wholesalerMrp) <= 0) return toast.error('Wholesaler MRP is required');
     if (!editForm.retailerPrice || Number(editForm.retailerPrice) <= 0) return toast.error('Retailer Price is required');
@@ -100,6 +103,7 @@ const StockManagement: React.FC = () => {
         category: editForm.category,
         unit: editForm.unit,
         description: editForm.description,
+        wholesalerBillPrice: Number(editForm.wholesalerBillPrice) || 0,
         wholesalerPrice: Number(editForm.wholesalerPrice) || 0,
         wholesalerMrp: Number(editForm.wholesalerMrp) || 0,
         retailerPrice: Number(editForm.retailerPrice) || 0,
@@ -248,9 +252,12 @@ const StockManagement: React.FC = () => {
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
                         {wp > 0 ? (
                           <div>
+                            {Number(p.wholesalerBillPrice) > 0 && (
+                              <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', fontWeight: 600 }}>Bill ₹{Number(p.wholesalerBillPrice).toFixed(2)}</div>
+                            )}
                             <div style={{ fontWeight: 800, color: 'var(--primary)' }}>₹{wp.toFixed(2)}</div>
                             {Number(p.wholesalerMrp) > 0 && (
-                              <div style={{ fontSize: '0.7rem', color: '#D97706', fontWeight: 600 }}>MRP ₹{Number(p.wholesalerMrp).toFixed(2)}</div>
+                              <div style={{ fontSize: '0.68rem', color: '#D97706', fontWeight: 600 }}>MRP ₹{Number(p.wholesalerMrp).toFixed(2)}</div>
                             )}
                           </div>
                         ) : <span style={{ color: 'var(--text-dim)', fontWeight: 500, fontSize: '0.78rem' }}>Not set</span>}
@@ -447,9 +454,22 @@ const StockManagement: React.FC = () => {
             {/* Wholesaler */}
             <div style={{ padding: '0.75rem 0.85rem', background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 10, marginBottom: '0.75rem' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.55rem' }}>🏭 Wholesaler</div>
-              <div className="form-grid">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.65rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Price (₹) *</label>
+                  <label className="form-label">Bill Price (₹) *</label>
+                  <input
+                    className="form-control"
+                    type="number" min="0.01" step="0.01"
+                    value={editForm.wholesalerBillPrice}
+                    onChange={e => setEditForm({ ...editForm, wholesalerBillPrice: e.target.value })}
+                    placeholder="0.00"
+                    required
+                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                  />
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: 3 }}>Purchase cost</p>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Selling Price (₹) *</label>
                   <input
                     className="form-control"
                     type="number" min="0.01" step="0.01"
@@ -457,8 +477,9 @@ const StockManagement: React.FC = () => {
                     onChange={e => setEditForm({ ...editForm, wholesalerPrice: e.target.value })}
                     placeholder="0.00"
                     required
-                    style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: 3 }}>Price to wholesaler</p>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">MRP (₹) *</label>
@@ -469,8 +490,9 @@ const StockManagement: React.FC = () => {
                     onChange={e => setEditForm({ ...editForm, wholesalerMrp: e.target.value })}
                     placeholder="0.00"
                     required
-                    style={{ fontSize: '1.05rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                    style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
                   />
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: 3 }}>Max retail price</p>
                 </div>
               </div>
             </div>
