@@ -5,7 +5,7 @@ interface User {
   _id: string;
   name: string;
   username: string;
-  role: 'admin' | 'salesman' | 'dispatch' | 'billing' | 'viewer' | 'stock_manager' | 'sale_staff';
+  role: 'admin' | 'salesman' | 'dispatch' | 'billing' | 'viewer' | 'stock_manager' | 'sale_staff' | 'checking';
 }
 
 interface AuthStore {
