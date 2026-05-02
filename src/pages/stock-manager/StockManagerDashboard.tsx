@@ -241,6 +241,31 @@ const StockManagerDashboard: React.FC = () => {
             <tbody>
               {recentProducts.map((p: any, i: number) => {
                 const qty = p.stock?.availableQty ?? 0;
+                const stockColor = qty === 0 ? 'var(--danger)' : qty <= 10 ? 'var(--warning)' : 'var(--success)';
+                const ppc = Number(p.innerPerCarton) || 0;
+                const ppi = Number(p.pcsPerInner) || 0;
+                const hasCarton = ppc > 1;
+                const hasInner = ppi > 1;
+                const savedC = p.stock?.stockCartons ?? 0;
+                const savedI = p.stock?.stockInners ?? 0;
+                const savedL = p.stock?.stockLoose ?? 0;
+                const useSaved = qty > 0 && (savedC > 0 || savedI > 0 || savedL > 0);
+                let ctns: number, inners: number, loose: number;
+                if (useSaved) {
+                  ctns = savedC; inners = savedI; loose = savedL;
+                } else {
+                  let rem = qty;
+                  ctns = hasCarton ? Math.floor(rem / ppc) : 0;
+                  rem = hasCarton ? rem % ppc : rem;
+                  inners = hasInner ? Math.floor(rem / ppi) : 0;
+                  loose = hasInner ? rem % ppi : rem;
+                }
+                const parts = [
+                  hasCarton && ctns > 0 && { val: ctns, label: 'ctn' },
+                  hasInner && inners > 0 && { val: inners, label: 'inr' },
+                  loose > 0 && { val: loose, label: 'pcs' },
+                ].filter(Boolean) as { val: number; label: string }[];
+                const displayParts = parts.length > 0 ? parts : [{ val: 0, label: 'pcs' }];
                 return (
                   <tr key={p._id} style={{ borderBottom: i < recentProducts.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 0.12s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg3)'; }}
@@ -258,7 +283,17 @@ const StockManagerDashboard: React.FC = () => {
                     </td>
                     <td style={{ padding: '0.45rem 1.25rem', fontSize: '0.76rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.sku}</td>
                     <td style={{ padding: '0.45rem 1.25rem', fontSize: '0.76rem', color: 'var(--text-muted)' }}>{p.category || 'Uncategorized'}</td>
-                    <td style={{ padding: '0.45rem 1.25rem', fontWeight: 700, fontSize: '0.83rem', color: qty === 0 ? 'var(--danger)' : qty <= 10 ? 'var(--warning)' : 'var(--success)' }}>{qty}</td>
+                    <td style={{ padding: '0.45rem 1.25rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {displayParts.map((part, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: stockColor, fontFamily: 'var(--font-mono)' }}>{part.val}</span>
+                            <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{part.label}</span>
+                          </div>
+                        ))}
+                        {qty === 0 && <span className="badge status-pending" style={{ fontSize: '0.55rem', marginTop: 1 }}>Out</span>}
+                      </div>
+                    </td>
                     <td style={{ padding: '0.45rem 1.25rem', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
                       {new Date(p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
