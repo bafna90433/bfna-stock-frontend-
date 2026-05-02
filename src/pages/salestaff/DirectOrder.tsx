@@ -106,7 +106,10 @@ const DirectOrder: React.FC = () => {
             const { data: p } = await api.get(`/products/${item.productId}`);
             return {
               ...item,
-              availableQty: p.stock?.availableQty ?? item.availableQty,
+              // Refresh packaging — fix stale || 1 values from old localStorage
+              pcsPerInner:   isNaN(Number(p.pcsPerInner))    ? 0 : Number(p.pcsPerInner),
+              innerPerCarton: isNaN(Number(p.innerPerCarton)) ? 0 : Number(p.innerPerCarton),
+              availableQty:  p.stock?.availableQty ?? item.availableQty,
               stockCartons:  p.stock?.stockCartons  ?? item.stockCartons,
               stockInners:   p.stock?.stockInners   ?? item.stockInners,
               stockLoose:    p.stock?.stockLoose    ?? item.stockLoose,
@@ -280,8 +283,9 @@ const DirectOrder: React.FC = () => {
       updated.isBulkPriced = isBulk;
       setItems(items.map(i => i.productId === p._id ? updated : i));
     } else {
-      const ppi = Number(p.pcsPerInner) || 1;
-      const ipc = Number(p.innerPerCarton) || 1;
+      // Preserve 0 — 0 means "no inner/carton packaging", never coerce to 1
+      const ppi = isNaN(Number(p.pcsPerInner))    ? 0 : Number(p.pcsPerInner);
+      const ipc = isNaN(Number(p.innerPerCarton)) ? 0 : Number(p.innerPerCarton);
       const base = pickPrice(p);
       const tiers = p.bulkPricingTiers || [];
       const { price, isBulk } = getEffectivePrice(base, tiers, 1, ppi, ipc);
@@ -706,8 +710,11 @@ const DirectOrder: React.FC = () => {
                               onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
                               style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
                             />
-                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: cartonOver ? 'var(--danger)' : 'var(--text-muted)' }}>
-                              {cartonOver ? `⚠ Only ${dispCartons} CTN` : `${dispCartons} CTN`}
+                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
+                              color: (cartonOver || (item.cartonQty > 0 && dispCartons === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
+                              {(item.cartonQty > 0 && dispCartons === 0) ? '⚠ No CTN stock'
+                                : cartonOver ? `⚠ Only ${dispCartons} CTN`
+                                : `${dispCartons} CTN`}
                             </span>
                           </>
                         )}
@@ -724,8 +731,11 @@ const DirectOrder: React.FC = () => {
                               onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
                               style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
                             />
-                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: innerOver ? 'var(--danger)' : 'var(--text-muted)' }}>
-                              {innerOver ? `⚠ Only ${dispInners} INR` : `${dispInners} INR`}
+                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
+                              color: (innerOver || (item.innerQty > 0 && dispInners === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
+                              {(item.innerQty > 0 && dispInners === 0) ? '⚠ No INR stock'
+                                : innerOver ? `⚠ Only ${dispInners} INR`
+                                : `${dispInners} INR`}
                             </span>
                           </>
                         )}
