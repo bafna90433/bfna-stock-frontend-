@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Tags, TrendingUp, Package, LogOut, Truck, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, Tags, TrendingUp, Package, LogOut, Truck, FileText, ClipboardCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 

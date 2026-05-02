@@ -81,5 +81,6 @@ export function isRoleAllowedOnPortal(userRole: string, config: PortalConfig): b
 /** Get correct redirect path after login */
 export function getLoginRedirect(userRole: string, config: PortalConfig): string {
   if (userRole === 'admin') return '/admin/dashboard';
+  if (userRole === 'checking') return '/checking/dashboard';
   return config.defaultRedirect;
 }

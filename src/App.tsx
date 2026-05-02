@@ -39,6 +39,12 @@ import HoldOrders from './pages/dispatch/HoldOrders';
 import ReadyToDispatch from './pages/dispatch/ReadyToDispatch';
 import DispatchedItems from './pages/dispatch/DispatchedItems';
 
+// Checking Portal
+import CheckingLayout from './pages/checking/CheckingLayout';
+import CheckingDashboard from './pages/checking/CheckingDashboard';
+import CheckingOrder from './pages/checking/CheckingOrder';
+import CheckingHistory from './pages/checking/CheckingHistory';
+
 // Billing Portal
 import BillingLayout from './pages/billing/BillingLayout';
 import BillingDashboard from './pages/billing/BillingDashboard';
@@ -56,6 +62,7 @@ const RoleRedirect: React.FC = () => {
   if (user.role === 'dispatch') return <Navigate to="/dispatch/dashboard" replace />;
   if (user.role === 'billing') return <Navigate to="/billing/dashboard" replace />;
   if (user.role === 'sale_staff') return <Navigate to="/sale-staff/dashboard" replace />;
+  if (user.role === 'checking') return <Navigate to="/checking/dashboard" replace />;
   return <Navigate to="/login" replace />;
 };
 
@@ -137,6 +144,14 @@ function App() {
           <Route path="fulfillment" element={<CustomerFulfillment />} />
           <Route path="create/:orderId" element={<BillCreate />} />
           <Route path=":billId" element={<BillView />} />
+        </Route>
+
+        {/* Checking Portal (Mobile) */}
+        <Route path="/checking" element={<CheckingLayout />}>
+          <Route path="" element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<CheckingDashboard />} />
+          <Route path="order/:id" element={<CheckingOrder />} />
+          <Route path="history" element={<CheckingHistory />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

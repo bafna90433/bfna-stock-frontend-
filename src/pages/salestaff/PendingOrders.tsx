@@ -5,6 +5,39 @@ import api from '../../api/axios';
 import OrderPreviewModal from '../../components/OrderPreviewModal';
 import toast from 'react-hot-toast';
 
+// calcTotalPcs: (carton * innerPerCarton) + (inner * pcsPerInner) + loose
+// 1 CTN = innerPerCarton pcs, 1 INR = pcsPerInner pcs (independent multipliers)
+const formatQty = (pcs: number, item: any): string => {
+  const pcsPerInner = item.pcsPerInner || 1;
+  const pcsPerCarton = item.innerPerCarton || 1;
+
+  if (item.cartonQty > 0) {
+    const ctns = Math.floor(pcs / pcsPerCarton);
+    const rem = pcs % pcsPerCarton;
+    const parts: string[] = [];
+    if (ctns > 0) parts.push(`${ctns} CTN`);
+    if (rem > 0) parts.push(`${rem} PCS`);
+    return parts.join(' + ') || '0';
+  } else if (item.innerQty > 0) {
+    const inners = Math.floor(pcs / pcsPerInner);
+    const loose = pcs % pcsPerInner;
+    const parts: string[] = [];
+    if (inners > 0) parts.push(`${inners} INR`);
+    if (loose > 0) parts.push(`${loose} PCS`);
+    return parts.join(' + ') || '0';
+  } else {
+    return `${pcs} PCS`;
+  }
+};
+
+const formatOrderedQty = (item: any): string => {
+  const parts: string[] = [];
+  if (item.cartonQty > 0) parts.push(`${item.cartonQty} CTN`);
+  if (item.innerQty > 0) parts.push(`${item.innerQty} INR`);
+  if (item.looseQty > 0) parts.push(`${item.looseQty} PCS`);
+  return parts.join(' + ') || `${item.qtyOrdered} PCS`;
+};
+
 const PendingOrders: React.FC = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
@@ -312,7 +345,7 @@ const PendingOrders: React.FC = () => {
                             }}>
                               {item.imageUrl && <img src={item.imageUrl} style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }} alt="" />}
                               <span style={{ fontWeight: 600 }}>{item.productName}</span>
-                              <span style={{ color: '#10B981', fontWeight: 800 }}>×{item.qtyDispatched}</span>
+                              <span style={{ color: '#10B981', fontWeight: 800 }}>×{formatQty(item.qtyDispatched, item)}</span>
                             </div>
                           ))}
                         </div>
@@ -326,7 +359,8 @@ const PendingOrders: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                           {pendingItems.map((item: any, idx: number) => {
-                            const qty = isPartial ? item.qtyOrdered - (item.qtyDispatched || 0) : item.qtyOrdered;
+                            const remainingPcs = isPartial ? item.qtyOrdered - (item.qtyDispatched || 0) : item.qtyOrdered;
+                            const qtyLabel = isPartial ? formatQty(remainingPcs, item) : formatOrderedQty(item);
                             return (
                               <div key={idx} style={{
                                 display: 'flex', alignItems: 'center', gap: '0.35rem',
@@ -335,7 +369,7 @@ const PendingOrders: React.FC = () => {
                               }}>
                                 {item.imageUrl && <img src={item.imageUrl} style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }} alt="" />}
                                 <span style={{ fontWeight: 600 }}>{item.productName}</span>
-                                <span style={{ color: leftBorderColor, fontWeight: 800 }}>×{qty}</span>
+                                <span style={{ color: leftBorderColor, fontWeight: 800 }}>×{qtyLabel}</span>
                               </div>
                             );
                           })}

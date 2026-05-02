@@ -38,33 +38,53 @@ const computeItemDispatch = (item: DispatchItem) => {
   const stockL = item.stockLoose   ?? 0;
   const hasBreakdown = stockC > 0 || stockI > 0 || stockL > 0;
 
+  let pcsLeft = item.qtyDispatched;
+  
+  // 1. CTN Dispatch
   let dispCTN = 0;
-  let ctnWarning = false;
+  let ctnBinWarning = false;
   if (hasCTN) {
-    if (ppc > 0 && hasBreakdown) {
-      dispCTN = Math.min(stockC, item.cartonQty || 0);
-      if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
-    } else if (ppc > 0 && !hasBreakdown) {
-      const availCartons = Math.floor((item.availableQty || 0) / ppc);
-      dispCTN = Math.min(availCartons, item.cartonQty || 0);
-      if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
+    if (ppc > 0) {
+      dispCTN = Math.min(Math.floor(pcsLeft / ppc), item.cartonQty || 0);
+      if (dispCTN > stockC && hasBreakdown) ctnBinWarning = true;
     } else if (!hasINR && !hasPCS) {
-      dispCTN = item.cartonQty || 0; // only CTN ordered, no rate — treat as full
+      dispCTN = item.cartonQty || 0;
     } else {
-      ctnWarning = true; // mixed order, no carton rate
+      ctnBinWarning = true; // No rate but mixed order
     }
   }
+  pcsLeft -= dispCTN * ppc;
 
-  let pcsLeft = item.qtyDispatched - dispCTN * ppc;
-  if (pcsLeft < 0) pcsLeft = 0;
-  const dispINR = hasINR && ppi > 0 ? Math.min(Math.floor(pcsLeft / ppi), item.innerQty || 0) : 0;
+  // 2. INR Dispatch
+  let dispINR = 0;
+  let inrBinWarning = false;
+  if (hasINR && ppi > 0) {
+    dispINR = Math.min(Math.floor(pcsLeft / ppi), item.innerQty || 0);
+    if (dispINR > stockI && hasBreakdown) inrBinWarning = true;
+  }
   pcsLeft -= dispINR * ppi;
-  const dispPCS = hasPCS ? Math.min(pcsLeft, item.looseQty || 0) : 0;
 
-  // Pending CTN (not dispatched due to no stock)
-  const pendingCTN = ctnWarning ? (item.cartonQty || 0) - dispCTN : 0;
+  // 3. PCS Dispatch
+  let dispPCS = 0;
+  let pcsBinWarning = false;
+  if (hasPCS) {
+    dispPCS = Math.min(pcsLeft, item.looseQty || 0);
+    if (dispPCS > stockL && hasBreakdown) pcsBinWarning = true;
+  }
 
-  return { dispCTN, dispINR, dispPCS, ctnWarning, pendingCTN, hasCTN, hasINR, hasPCS };
+  // Pending quantities (truly missing total stock)
+  const pendingCTN = hasCTN ? (item.cartonQty || 0) - dispCTN : 0;
+  const pendingINR = hasINR ? (item.innerQty  || 0) - dispINR : 0;
+  const pendingPCS = hasPCS ? (item.looseQty  || 0) - dispPCS : 0;
+  const hasAnyPending = pendingCTN > 0 || pendingINR > 0 || pendingPCS > 0;
+
+  return { 
+    dispCTN, dispINR, dispPCS, 
+    ctnBinWarning, inrBinWarning, pcsBinWarning,
+    pendingCTN, pendingINR, pendingPCS, 
+    hasAnyPending,
+    hasCTN, hasINR, hasPCS 
+  };
 };
 
 // Show ordered quantities using the stored cartonQty / innerQty / looseQty fields directly
@@ -202,12 +222,12 @@ const DispatchOrder: React.FC = () => {
   const partialCount = items.filter(i => i.stockStatus === 'partial').length;
   const noStockCount = items.filter(i => i.stockStatus === 'no_stock').length;
   const allReady     = noStockCount === 0 && partialCount === 0;
-  const nothingReady = readyCount === 0;
+  const nothingReady = readyCount === 0 && partialCount === 0;
 
-  // Frontend-computed: any item has a CTN unit with no/partial stock
-  const anyItemHasCtnWarning = items.some(i => computeItemDispatch(i).ctnWarning);
-  // Items (or CTN units) that will remain pending after dispatch
-  const ctnPendingItems = items.filter(i => computeItemDispatch(i).pendingCTN > 0);
+  // Frontend-computed: any item has a unit with no/partial stock
+  const anyItemHasWarning = items.some(i => computeItemDispatch(i).hasAnyPending);
+  // Items (or units) that will remain pending after dispatch
+  const pendingItems = items.filter(i => computeItemDispatch(i).hasAnyPending);
 
   const isAlreadyOnHold = (order.status === 'partial' && nothingReady) || (order.status === 'waiting' && !allReady);
   const isHoldMode = nothingReady || dispatchType === 'hold';
@@ -340,10 +360,11 @@ const DispatchOrder: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {items.filter(i => i.qtyDispatched > 0).map(item => {
-              const { dispCTN, dispINR, dispPCS, ctnWarning, hasCTN, hasINR, hasPCS } = computeItemDispatch(item);
+              const { dispCTN, dispINR, dispPCS, ctnBinWarning, inrBinWarning, pcsBinWarning, hasAnyPending, hasCTN, hasINR, hasPCS } = computeItemDispatch(item);
+              const anyBinWarning = ctnBinWarning || inrBinWarning || pcsBinWarning;
 
               return (
-                <div key={item.productId} style={{ background: 'rgba(16,185,129,0.04)', border: `1.5px solid ${ctnWarning ? '#F59E0B' : '#10B981'}`, borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div key={item.productId} style={{ background: 'rgba(16,185,129,0.04)', border: `1.5px solid ${anyBinWarning ? '#F59E0B' : '#10B981'}`, borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   {item.imageUrl
                     ? <img src={item.imageUrl} style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} alt={item.productName} />
                     : <div style={{ width: 56, height: 56, borderRadius: 8, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', border: '1px solid var(--border)', flexShrink: 0 }}>📦</div>
@@ -352,10 +373,13 @@ const DispatchOrder: React.FC = () => {
                     <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.productName}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
                     <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      {ctnWarning
-                        ? <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', padding: '2px 10px', borderRadius: 99 }}>⚠ Partial — No CTN Stock</span>
-                        : <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(16,185,129,0.12)', color: '#10B981', padding: '2px 10px', borderRadius: 99 }}>✅ Stock Available</span>
-                      }
+                      {anyBinWarning ? (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', padding: '2px 10px', borderRadius: 99 }}>
+                          ⚠ Units need to be {ctnBinWarning ? 'Packed' : inrBinWarning ? 'Packed' : 'Broken'}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(16,185,129,0.12)', color: '#10B981', padding: '2px 10px', borderRadius: 99 }}>✅ Stock Available</span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
@@ -363,7 +387,7 @@ const DispatchOrder: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Ordered</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {hasCTN && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: ctnWarning ? '#F59E0B' : 'var(--text)' }}>{item.cartonQty} CTN</div>}
+                        {hasCTN && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.cartonQty} CTN</div>}
                         {hasINR && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.innerQty} INR</div>}
                         {hasPCS && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.looseQty} PCS</div>}
                       </div>
@@ -373,12 +397,18 @@ const DispatchOrder: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Will Dispatch</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {hasCTN && (ctnWarning
-                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#EF4444' }}>⚠ No CTN Stock</div>
+                        {hasCTN && (ctnBinWarning
+                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Pack from Loose ({dispCTN})</div>
                           : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispCTN} CTN</div>
                         )}
-                        {hasINR && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispINR} INR</div>}
-                        {hasPCS && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispPCS} PCS</div>}
+                        {hasINR && (inrBinWarning
+                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Pack from Loose ({dispINR})</div>
+                          : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispINR} INR</div>
+                        )}
+                        {hasPCS && (pcsBinWarning
+                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Break from Inner ({dispPCS})</div>
+                          : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispPCS} PCS</div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -389,15 +419,15 @@ const DispatchOrder: React.FC = () => {
         </div>
       )}
 
-      {/* CTN units that will remain pending (no CTN stock) — shown in partial/send-now mode */}
-      {!isHoldMode && !nothingReady && ctnPendingItems.length > 0 && (
+      {/* Units that will remain pending (no stock) — shown in partial/send-now mode */}
+      {!isHoldMode && !nothingReady && pendingItems.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Clock size={16} /> CTN Stock Missing — Will Remain Pending
+            <Clock size={16} /> Unit Stock Missing — Will Remain Pending
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {ctnPendingItems.map(item => {
-              const { pendingCTN } = computeItemDispatch(item);
+            {pendingItems.map(item => {
+              const { pendingCTN, pendingINR, pendingPCS } = computeItemDispatch(item);
               return (
                 <div key={item.productId} style={{ background: 'rgba(245,158,11,0.04)', border: '1.5px solid #F59E0B', borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   {item.imageUrl
@@ -411,7 +441,11 @@ const DispatchOrder: React.FC = () => {
                   <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: '#F59E0B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>⏳ Pending</div>
-                      <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#F59E0B' }}>{pendingCTN} CTN</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {pendingCTN > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>{pendingCTN} CTN</div>}
+                        {pendingINR > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>{pendingINR} INR</div>}
+                        {pendingPCS > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>{pendingPCS} PCS</div>}
+                      </div>
                       <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>Stock aane par jayega</div>
                     </div>
                   </div>
@@ -623,7 +657,7 @@ const DispatchOrder: React.FC = () => {
                 ? <><Loader size={17} style={{ animation: 'spin 1s linear infinite', marginRight: 6 }} />Processing...</>
                 : (nothingReady || dispatchType === 'hold')
                   ? <><Clock size={17} style={{ marginRight: 6 }} />Put on Hold</>
-                  : (allReady && !anyItemHasCtnWarning)
+                  : (allReady && !anyItemHasWarning)
                     ? <><CheckCircle size={17} style={{ marginRight: 6 }} />Dispatch Now (Full Order)</>
                     : <><Truck size={17} style={{ marginRight: 6 }} />Dispatch Now (Available Stock)</>
               }

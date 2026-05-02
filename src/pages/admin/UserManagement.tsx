@@ -13,7 +13,7 @@ interface User {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: '#6C5CE7', sale_staff: '#FF6B6B', dispatch: '#00CEC9', billing: '#FDCB6E', stock_manager: '#A29BFE', viewer: '#74B9FF',
+  admin: '#6C5CE7', sale_staff: '#FF6B6B', dispatch: '#00CEC9', billing: '#FDCB6E', stock_manager: '#A29BFE', viewer: '#74B9FF', checking: '#3B82F6',
 };
 
 const UserManagement: React.FC = () => {
@@ -97,8 +97,8 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-        {['admin', 'sale_staff', 'dispatch', 'billing', 'stock_manager', 'viewer'].map(role => (
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+        {['admin', 'sale_staff', 'dispatch', 'billing', 'stock_manager', 'viewer', 'checking'].map(role => (
           <div key={role} className="stat-card">
             <div className="stat-icon" style={{ background: `${ROLE_COLORS[role]}22`, color: ROLE_COLORS[role] }}>
               <Shield size={20} />
@@ -219,6 +219,7 @@ const UserManagement: React.FC = () => {
                   <option value="billing">Billing Staff</option>
                   <option value="stock_manager">Stock Manager</option>
                   <option value="viewer">Viewer</option>
+                  <option value="checking">Checking Staff</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
