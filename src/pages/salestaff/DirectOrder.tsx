@@ -631,20 +631,28 @@ const DirectOrder: React.FC = () => {
                       </div>
 
                       {/* CTN input */}
-                      <input type="number" min="0" value={item.cartonQty}
-                        onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: '1.5px solid var(--border)', borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                        onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                      />
+                      {item.innerPerCarton > 1 ? (
+                        <input type="number" min="0" value={item.cartonQty}
+                          onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                          onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
+                          onBlur={e => (e.target.style.borderColor = cartonOver ? 'var(--danger)' : 'var(--border)')}
+                        />
+                      ) : (
+                        <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>—</div>
+                      )}
 
                       {/* INR input */}
-                      <input type="number" min="0" value={item.innerQty}
-                        onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: '1.5px solid var(--border)', borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                        onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                      />
+                      {item.pcsPerInner > 1 ? (
+                        <input type="number" min="0" value={item.innerQty}
+                          onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                          onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
+                          onBlur={e => (e.target.style.borderColor = innerOver ? 'var(--danger)' : 'var(--border)')}
+                        />
+                      ) : (
+                        <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>—</div>
+                      )}
 
                       {/* PCS input */}
                       <input type="number" min="0" value={item.looseQty}
