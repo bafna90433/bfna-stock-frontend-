@@ -115,6 +115,11 @@ const AddProduct: React.FC = () => {
 
       if (isEdit) {
         await api.put(`/products/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        // If user added stock, apply it
+        const addQty = Number(form.initialQty) || 0;
+        if (addQty > 0) {
+          await api.patch(`/products/${id}/stock`, { qty: addQty, operation: 'add' });
+        }
         toast.success('Product updated successfully!');
         setSuccess(true);
         setTimeout(() => navigate('/stock-manager/products'), 1500);
@@ -234,15 +239,13 @@ const AddProduct: React.FC = () => {
                   </div>
                 )}
               </div>
-              {!isEdit && (
-                <SmartStockInput
-                  pcsPerInner={Number(form.pcsPerInner) || 1}
-                  pcsPerCarton={Number(form.innerPerCarton) || 1}
-                  value={Number(form.initialQty) || 0}
-                  onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
-                  label="Initial Stock Qty"
-                />
-              )}
+              <SmartStockInput
+                pcsPerInner={Number(form.pcsPerInner) || 1}
+                pcsPerCarton={Number(form.innerPerCarton) || 1}
+                value={Number(form.initialQty) || 0}
+                onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
+                label={isEdit ? 'Add Stock (adds to current)' : 'Initial Stock Qty'}
+              />
             </div>
 
             {/* Pricing Card — open to all */}
