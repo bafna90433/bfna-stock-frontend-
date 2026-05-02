@@ -65,8 +65,8 @@ const AddProduct: React.FC = () => {
     category: '',
     description: '',
     initialQty: '0',
-    pcsPerInner: '1',
-    innerPerCarton: '1',
+    pcsPerInner: '0',
+    innerPerCarton: '0',
   });
   const [bulkTiers, setBulkTiers] = useState<{ minQty: string; unit: 'pcs' | 'inner' | 'carton'; price: string }[]>([]);
 
@@ -124,7 +124,7 @@ const AddProduct: React.FC = () => {
         toast.success('Product added successfully!');
         setTimeout(() => {
           setSuccess(false);
-          setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '1', innerPerCarton: '1' });
+          setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '0', innerPerCarton: '0' });
           setBulkTiers([]);
           setPreview(null);
           setFile(null);

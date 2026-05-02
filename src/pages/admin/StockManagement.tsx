@@ -3,6 +3,7 @@ import {
   Package, Search, Edit, Loader, X, Save,
   ArrowUp, TrendingDown, Tag, Plus,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -13,6 +14,7 @@ const StockManagement: React.FC = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const isStockMgr = user?.role === 'stock_manager';
+  const navigate = useNavigate();
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,7 +303,7 @@ const StockManagement: React.FC = () => {
                           <button
                             className="btn btn-sm"
                             title="Edit Product"
-                            onClick={() => openEdit(p)}
+                            onClick={() => navigate(`/stock-manager/edit-product/${p._id}`)}
                             style={{
                               background: noPrice
                                 ? 'linear-gradient(135deg, #F59E0B, #D97706)'
