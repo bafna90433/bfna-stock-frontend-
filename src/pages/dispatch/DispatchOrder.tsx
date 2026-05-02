@@ -289,16 +289,29 @@ const DispatchOrder: React.FC = () => {
               const hasPCS = (item.looseQty  || 0) > 0;
 
               // Per-unit dispatch calculation
+              const stockC = item.stockCartons ?? 0;
+              const stockI = item.stockInners  ?? 0;
+              const stockL = item.stockLoose   ?? 0;
+              const hasBreakdown = stockC > 0 || stockI > 0 || stockL > 0;
+
               let dispCTN = 0;
               let ctnWarning = false;
               if (hasCTN) {
-                if (ppc > 0) {
-                  dispCTN = Math.min(item.stockCartons || 0, item.cartonQty || 0);
+                if (ppc > 0 && hasBreakdown) {
+                  // Breakdown saved → use carton stock directly
+                  dispCTN = Math.min(stockC, item.cartonQty || 0);
+                  if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
+                } else if (ppc > 0 && !hasBreakdown) {
+                  // No breakdown but carton rate known → compute from total available pcs
+                  const availCartons = Math.floor((item.availableQty || 0) / ppc);
+                  dispCTN = Math.min(availCartons, item.cartonQty || 0);
                   if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
                 } else if (!hasINR && !hasPCS) {
-                  dispCTN = item.cartonQty || 0; // only CTN ordered, treat as full dispatch
+                  // No carton rate, only CTN ordered → treat as full dispatch
+                  dispCTN = item.cartonQty || 0;
                 } else {
-                  ctnWarning = true; // mixed order, CTN has no rate → can't dispatch CTN part
+                  // No carton rate, mixed with INR/PCS → CTN part can't be dispatched
+                  ctnWarning = true;
                 }
               }
               let pcsLeft = item.qtyDispatched - dispCTN * ppc;
