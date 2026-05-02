@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Package, Box, Layers } from 'lucide-react';
 
 interface SmartStockInputProps {
-  pcsPerInner: number;   // e.g. 12  → 1 Inner = 12 Pcs
-  pcsPerCarton: number;  // e.g. 120 → 1 Carton = 120 Pcs
-  value: number;         // total pcs (controlled)
+  pcsPerInner: number;
+  pcsPerCarton: number;
+  value: number;
   onChange: (totalPcs: number) => void;
   label?: string;
+  currentStock?: number;
 }
 
 const SmartStockInput: React.FC<SmartStockInputProps> = ({
@@ -15,6 +16,7 @@ const SmartStockInput: React.FC<SmartStockInputProps> = ({
   value,
   onChange,
   label = 'Stock Entry',
+  currentStock,
 }) => {
   const [cartons, setCartons] = useState(0);
   const [inners, setInners]   = useState(0);
@@ -50,7 +52,14 @@ const SmartStockInput: React.FC<SmartStockInputProps> = ({
 
   return (
     <div>
-      <label className="form-label">{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+        <label className="form-label" style={{ marginBottom: 0 }}>{label}</label>
+        {currentStock !== undefined && (
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--success)', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 6, padding: '1px 8px', fontFamily: 'var(--font-mono)' }}>
+            Stock: {currentStock} pcs
+          </span>
+        )}
+      </div>
 
       {/* Entry boxes */}
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>

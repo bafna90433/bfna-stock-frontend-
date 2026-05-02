@@ -241,18 +241,13 @@ const AddProduct: React.FC = () => {
                   </div>
                 )}
               </div>
-              {isEdit && currentStock !== null && (
-                <div style={{ margin: '0.5rem 0 0.3rem', padding: '0.45rem 0.75rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Stock:</span>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>{currentStock} pcs</span>
-                </div>
-              )}
               <SmartStockInput
                 pcsPerInner={Number(form.pcsPerInner) || 1}
                 pcsPerCarton={Number(form.innerPerCarton) || 1}
                 value={Number(form.initialQty) || 0}
                 onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
                 label={isEdit ? 'Add Stock (adds to current)' : 'Initial Stock Qty'}
+                currentStock={isEdit ? (currentStock ?? undefined) : undefined}
               />
             </div>
 
