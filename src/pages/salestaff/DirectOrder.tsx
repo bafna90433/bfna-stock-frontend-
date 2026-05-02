@@ -326,12 +326,9 @@ const DirectOrder: React.FC = () => {
     setItems(prev => prev.map(i => {
       if (i.productId !== id) return i;
       const updated = { ...i, [field]: Math.max(0, isNaN(val) ? 0 : val) };
-      // Use isNaN guard (not || 1) so genuine 0 values (no carton/inner defined) are preserved
-      updated.pcsPerInner    = isNaN(Number(updated.pcsPerInner))    ? 1 : Number(updated.pcsPerInner);
-      updated.innerPerCarton = isNaN(Number(updated.innerPerCarton)) ? 1 : Number(updated.innerPerCarton);
-      // If unit not defined, force qty to 0 so it never contributes to total
-      if (updated.innerPerCarton === 0) updated.cartonQty = 0;
-      if (updated.pcsPerInner    === 0) updated.innerQty  = 0;
+      // Preserve 0 values — 0 means packaging rate not set (don't coerce to 1)
+      updated.pcsPerInner    = isNaN(Number(updated.pcsPerInner))    ? 0 : Number(updated.pcsPerInner);
+      updated.innerPerCarton = isNaN(Number(updated.innerPerCarton)) ? 0 : Number(updated.innerPerCarton);
       updated.basePrice      = Number(updated.basePrice)      || Number(updated.pricePerUnit) || 0;
       updated.bulkPricingTiers = updated.bulkPricingTiers || [];
       updated.totalQtyPcs = calcTotalPcs(updated.cartonQty, updated.innerQty, updated.looseQty, updated.pcsPerInner, updated.innerPerCarton);
@@ -699,46 +696,34 @@ const DirectOrder: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* CTN input — hidden when no carton packaging */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                        {item.innerPerCarton <= 0 ? (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>—</span>
-                        ) : (
-                          <>
-                            <input type="number" min="0"
-                              value={item.cartonQty}
-                              onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
-                              style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                            />
-                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
-                              color: (cartonOver || (item.cartonQty > 0 && dispCartons === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
-                              {(item.cartonQty > 0 && dispCartons === 0) ? '⚠ No CTN stock'
-                                : cartonOver ? `⚠ Only ${dispCartons} CTN`
-                                : `${dispCartons} CTN`}
-                            </span>
-                          </>
-                        )}
+                      {/* CTN input — always visible */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <input type="number" min="0"
+                          value={item.cartonQty}
+                          onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                        />
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
+                          color: (cartonOver || (item.cartonQty > 0 && dispCartons === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
+                          {(item.cartonQty > 0 && dispCartons === 0) ? '⚠ No CTN stock'
+                            : cartonOver ? `⚠ Only ${dispCartons} CTN`
+                            : `${dispCartons} CTN`}
+                        </span>
                       </div>
 
-                      {/* INR input — hidden when no inner packaging */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                        {item.pcsPerInner <= 0 ? (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>—</span>
-                        ) : (
-                          <>
-                            <input type="number" min="0"
-                              value={item.innerQty}
-                              onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
-                              style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                            />
-                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
-                              color: (innerOver || (item.innerQty > 0 && dispInners === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
-                              {(item.innerQty > 0 && dispInners === 0) ? '⚠ No INR stock'
-                                : innerOver ? `⚠ Only ${dispInners} INR`
-                                : `${dispInners} INR`}
-                            </span>
-                          </>
-                        )}
+                      {/* INR input — always visible */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <input type="number" min="0"
+                          value={item.innerQty}
+                          onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                        />
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
+                          color: (innerOver || (item.innerQty > 0 && dispInners === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
+                          {(item.innerQty > 0 && dispInners === 0) ? '⚠ No INR stock'
+                            : innerOver ? `⚠ Only ${dispInners} INR`
+                            : `${dispInners} INR`}
+                        </span>
                       </div>
 
                       {/* PCS input */}
