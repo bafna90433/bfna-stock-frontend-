@@ -19,8 +19,43 @@ interface DispatchItem {
   qtyOrdered: number;
   qtyDispatched: number;
   availableQty: number;
+  stockCartons?: number;
+  stockInners?: number;
+  stockLoose?: number;
   stockStatus: 'available' | 'partial' | 'no_stock';
 }
+
+// Show ordered quantities using the stored cartonQty / innerQty / looseQty fields directly
+// (avoids divide-by-zero and wrong unit conversion when packaging rate = 0)
+const formatOrderLabel = (item: DispatchItem): string => {
+  const parts: string[] = [];
+  if ((item.cartonQty || 0) > 0) parts.push(`${item.cartonQty} CTN`);
+  if ((item.innerQty  || 0) > 0) parts.push(`${item.innerQty} INR`);
+  if ((item.looseQty  || 0) > 0) parts.push(`${item.looseQty} PCS`);
+  return parts.join(' + ') || `${item.qtyOrdered} PCS`;
+};
+
+// For pcs-based quantities (dispatch amounts, available stock etc.)
+const formatPcsLabel = (pcs: number, item: DispatchItem): string => {
+  const ppi = item.pcsPerInner  || 0;
+  const ppc = item.innerPerCarton || 0;
+  if (ppc > 0 && (item.cartonQty || 0) > 0) {
+    const ctns = Math.floor(pcs / ppc);
+    const rem  = pcs % ppc;
+    const parts: string[] = [];
+    if (ctns > 0) parts.push(`${ctns} CTN`);
+    if (rem  > 0) parts.push(`${rem} PCS`);
+    return parts.join(' + ') || '0';
+  } else if (ppi > 0 && (item.innerQty || 0) > 0) {
+    const inners = Math.floor(pcs / ppi);
+    const loose  = pcs % ppi;
+    const parts: string[] = [];
+    if (inners > 0) parts.push(`${inners} INR`);
+    if (loose  > 0) parts.push(`${loose} PCS`);
+    return parts.join(' + ') || '0';
+  }
+  return `${pcs} PCS`;
+};
 
 const DispatchOrder: React.FC = () => {
   const { orderId } = useParams();
@@ -40,11 +75,25 @@ const DispatchOrder: React.FC = () => {
         const { data } = await api.get(`/dispatch/order/${orderId}`);
         setOrder(data.order);
         const filteredItems = data.itemsWithStock.filter((i: any) => i.stockStatus !== 'completed');
-        setItems(filteredItems.map((item: any) => ({
-          ...item,
-          qtyOrdered: item.remainingQty, // Show remaining as ordered for this dispatch
-          qtyDispatched: Math.min(item.availableQty, item.remainingQty),
-        })));
+        setItems(filteredItems.map((item: any) => {
+          const pcsPerInner = item.pcsPerInner || 1;
+          const pcsPerCarton = item.innerPerCarton || 1; // 1 CTN = innerPerCarton pcs
+
+          let maxDispatch = Math.min(item.availableQty, item.remainingQty);
+
+          // Round down to complete units based on how the item was ordered
+          if ((item.cartonQty || 0) > 0) {
+            maxDispatch = Math.floor(maxDispatch / pcsPerCarton) * pcsPerCarton;
+          } else if ((item.innerQty || 0) > 0) {
+            maxDispatch = Math.floor(maxDispatch / pcsPerInner) * pcsPerInner;
+          }
+
+          return {
+            ...item,
+            qtyOrdered: item.remainingQty,
+            qtyDispatched: maxDispatch,
+          };
+        }));
       } catch (e) { toast.error('Failed to load order'); }
       finally { setLoading(false); }
     };
@@ -233,11 +282,6 @@ const DispatchOrder: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {items.filter(i => i.qtyDispatched > 0).map(item => {
-              const orderedLabel = [
-                item.cartonQty ? `${item.cartonQty} CTN` : '',
-                item.innerQty  ? `${item.innerQty} INR` : '',
-                item.looseQty  ? `${item.looseQty} PCS` : '',
-              ].filter(Boolean).join(' + ') || `${item.qtyOrdered} PCS`;
 
               return (
                 <div key={item.productId} style={{ background: 'rgba(16,185,129,0.04)', border: `1.5px solid #10B981`, borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -248,27 +292,31 @@ const DispatchOrder: React.FC = () => {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.productName}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
-                    <div style={{ marginTop: '0.4rem' }}>
-                       <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(16,185,129,0.12)', color: '#10B981', padding: '2px 10px', borderRadius: 99 }}>✅ Stock Available</span>
+                    <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(16,185,129,0.12)', color: '#10B981', padding: '2px 10px', borderRadius: 99 }}>✅ Stock Available</span>
+                      {(item.cartonQty || 0) > 0 && (item.stockInners || 0) > 0 && (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(99,102,241,0.1)', color: '#6366F1', padding: '2px 10px', borderRadius: 99 }}>
+                          📦 {item.stockInners} INR in stock
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Ordered</div>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)' }}>{item.qtyOrdered}</div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{orderedLabel}</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{formatOrderLabel(item)}</div>
                     </div>
                     <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Will Dispatch</div>
-                      <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{item.qtyDispatched}</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{formatPcsLabel(item.qtyDispatched, item)}</div>
                     </div>
                     {item.qtyOrdered > item.qtyDispatched && (
                       <>
                         <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Pending</div>
-                          <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: '#F59E0B' }}>{item.qtyOrdered - item.qtyDispatched}</div>
+                          <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: '#F59E0B' }}>{formatPcsLabel(item.qtyOrdered - item.qtyDispatched, item)}</div>
                         </div>
                       </>
                     )}
@@ -280,20 +328,59 @@ const DispatchOrder: React.FC = () => {
         </div>
       )}
 
-      {/* Pending / No Stock Section — only show in HOLD mode or if nothing is ready */}
-      {items.filter(i => i.qtyOrdered > i.qtyDispatched).length > 0 && (nothingReady || dispatchType === 'hold') && (
+      {/* SEND NOW mode: show no-stock items only when nothingReady (forced hold context) */}
+      {!isHoldMode && nothingReady && items.filter(i => i.qtyDispatched === 0).length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-             <AlertCircle size={16} /> Items remaining pending (out of stock)
+            <AlertCircle size={16} /> No Stock — Will be pending
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {items.filter(i => i.qtyDispatched === 0).map(item => (
+              <div key={item.productId} style={{ background: 'rgba(239,68,68,0.04)', border: '1.5px solid #EF4444', borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {item.imageUrl
+                  ? <img src={item.imageUrl} style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} alt={item.productName} />
+                  : <div style={{ width: 56, height: 56, borderRadius: 8, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', border: '1px solid var(--border)', flexShrink: 0 }}>📦</div>
+                }
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.productName}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
+                  <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', color: '#EF4444', padding: '2px 10px', borderRadius: 99 }}>
+                      ❌ No Stock
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Ordered</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{formatOrderLabel(item)}</div>
+                  </div>
+                  <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>To be Pending</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>{formatOrderLabel(item)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* WAIT/HOLD mode: combined section — ALL items that will be held (no-stock + partial) */}
+      {isHoldMode && items.filter(i => i.qtyOrdered > i.qtyDispatched).length > 0 && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertCircle size={16} /> Items remaining — will be held ({items.filter(i => i.qtyOrdered > i.qtyDispatched).length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {items.filter(i => i.qtyOrdered > i.qtyDispatched).map(item => {
-              const noStock = item.availableQty === 0;
+              const noStock = item.qtyDispatched === 0;
               const borderColor = noStock ? '#EF4444' : '#F59E0B';
               const bgColor = noStock ? 'rgba(239,68,68,0.04)' : 'rgba(245,158,11,0.04)';
-
+              const pendingQty = item.qtyOrdered - item.qtyDispatched;
               return (
-                <div key={item.productId} style={{ background: bgColor as any, border: `1.5px solid ${borderColor}`, borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div key={item.productId} style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   {item.imageUrl
                     ? <img src={item.imageUrl} style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} alt={item.productName} />
                     : <div style={{ width: 56, height: 56, borderRadius: 8, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', border: '1px solid var(--border)', flexShrink: 0 }}>📦</div>
@@ -301,21 +388,27 @@ const DispatchOrder: React.FC = () => {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.productName}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
-                    <div style={{ marginTop: '0.4rem' }}>
-                       <span style={{ fontSize: '0.72rem', fontWeight: 700, background: noStock ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)', color: borderColor, padding: '2px 10px', borderRadius: 99 }}>
-                         {noStock ? '❌ No Stock' : `⚠️ Only ${item.availableQty} available`}
-                       </span>
+                    <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {noStock ? (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239,68,68,0.12)', color: '#EF4444', padding: '2px 10px', borderRadius: 99 }}>
+                          ❌ No Stock
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', padding: '2px 10px', borderRadius: 99 }}>
+                          ⚠️ Only {formatPcsLabel(item.availableQty, item)} avail
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Ordered</div>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)' }}>{item.qtyOrdered}</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{formatOrderLabel(item)}</div>
                     </div>
                     <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>To be Pending</div>
-                      <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#F59E0B' }}>{item.qtyOrdered - (item.qtyDispatched > 0 ? item.qtyDispatched : 0)}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>To be Held</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: borderColor }}>{formatOrderLabel(item)}</div>
                     </div>
                   </div>
                 </div>
