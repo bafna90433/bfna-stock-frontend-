@@ -80,6 +80,7 @@ const DirectOrder: React.FC = () => {
   const [showInvoice, setShowInvoice] = useState(false);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const stockRefreshedRef = useRef(false);
 
   const fetchRecentOrders = async () => {
     setLoadingOrders(true);
@@ -91,6 +92,31 @@ const DirectOrder: React.FC = () => {
   };
 
   useEffect(() => { fetchRecentOrders(); }, []);
+
+  // Refresh stock breakdown for items loaded from localStorage (stale cache fix)
+  useEffect(() => {
+    if (isEdit || stockRefreshedRef.current) return;
+    stockRefreshedRef.current = true;
+    const cached = items;
+    if (cached.length === 0) return;
+    (async () => {
+      const refreshed = await Promise.all(
+        cached.map(async (item) => {
+          try {
+            const { data: p } = await api.get(`/products/${item.productId}`);
+            return {
+              ...item,
+              availableQty: p.stock?.availableQty ?? item.availableQty,
+              stockCartons:  p.stock?.stockCartons  ?? item.stockCartons,
+              stockInners:   p.stock?.stockInners   ?? item.stockInners,
+              stockLoose:    p.stock?.stockLoose    ?? item.stockLoose,
+            };
+          } catch { return item; }
+        })
+      );
+      setItems(refreshed);
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Order image
   const [orderImage, setOrderImage] = useState<File | null>(null);
@@ -126,8 +152,29 @@ const DirectOrder: React.FC = () => {
           setCustomerName(data.customerName);
           setCustomerAddress(data.customerAddress || {});
           setCustomerType(data.customerType || 'retailer');
-          setItems(data.items || []);
-          
+
+          // Fetch current stock for each item so stock column shows correctly
+          const itemsWithStock = await Promise.all(
+            (data.items || []).map(async (item: any) => {
+              try {
+                const { data: p } = await api.get(`/products/${item.productId}`);
+                return {
+                  ...item,
+                  availableQty:  p.stock?.availableQty  ?? 0,
+                  stockCartons:  p.stock?.stockCartons  ?? 0,
+                  stockInners:   p.stock?.stockInners   ?? 0,
+                  stockLoose:    p.stock?.stockLoose    ?? 0,
+                  basePrice:     item.pricePerUnit,
+                  isBulkPriced:  false,
+                  bulkPricingTiers: p.bulkPricingTiers || [],
+                };
+              } catch {
+                return { ...item, availableQty: 0, stockCartons: 0, stockInners: 0, stockLoose: 0, basePrice: item.pricePerUnit, isBulkPriced: false, bulkPricingTiers: [] };
+              }
+            })
+          );
+          setItems(itemsWithStock);
+
           if (SALESMAN_OPTIONS.includes(data.salesmanName)) {
             setSalesmanSelect(data.salesmanName);
           } else if (data.salesmanName) {
@@ -274,10 +321,17 @@ const DirectOrder: React.FC = () => {
   const updatePackaging = (id: string, field: 'cartonQty' | 'innerQty' | 'looseQty', val: number) => {
     setItems(prev => prev.map(i => {
       if (i.productId !== id) return i;
-      const updated = { ...i, [field]: Math.max(0, val) };
+      const updated = { ...i, [field]: Math.max(0, isNaN(val) ? 0 : val) };
+      // Use isNaN guard (not || 1) so genuine 0 values (no carton/inner defined) are preserved
+      updated.pcsPerInner    = isNaN(Number(updated.pcsPerInner))    ? 1 : Number(updated.pcsPerInner);
+      updated.innerPerCarton = isNaN(Number(updated.innerPerCarton)) ? 1 : Number(updated.innerPerCarton);
+      // If unit not defined, force qty to 0 so it never contributes to total
+      if (updated.innerPerCarton === 0) updated.cartonQty = 0;
+      if (updated.pcsPerInner    === 0) updated.innerQty  = 0;
+      updated.basePrice      = Number(updated.basePrice)      || Number(updated.pricePerUnit) || 0;
+      updated.bulkPricingTiers = updated.bulkPricingTiers || [];
       updated.totalQtyPcs = calcTotalPcs(updated.cartonQty, updated.innerQty, updated.looseQty, updated.pcsPerInner, updated.innerPerCarton);
       updated.qtyOrdered = updated.totalQtyPcs || 1;
-      // Re-evaluate bulk pricing whenever qty changes
       const { price, isBulk } = getEffectivePrice(updated.basePrice, updated.bulkPricingTiers, updated.totalQtyPcs, updated.pcsPerInner, updated.innerPerCarton);
       updated.pricePerUnit = price;
       updated.isBulkPriced = isBulk;
@@ -299,8 +353,8 @@ const DirectOrder: React.FC = () => {
     r.readAsDataURL(f);
   };
 
-  const subtotal = items.reduce((s, i) => s + i.pricePerUnit * i.totalQtyPcs, 0);
-  const totalGst = items.reduce((s, i) => s + (i.pricePerUnit * i.totalQtyPcs * (i.gstRate || 0) / 100), 0);
+  const subtotal = items.reduce((s, i) => s + (i.pricePerUnit || 0) * (i.totalQtyPcs || 0), 0);
+  const totalGst = items.reduce((s, i) => s + ((i.pricePerUnit || 0) * (i.totalQtyPcs || 0) * (i.gstRate || 0) / 100), 0);
   const total = subtotal + totalGst;
 
   const handleSubmit = async () => {
@@ -524,7 +578,7 @@ const DirectOrder: React.FC = () => {
               {/* cols: img | name | sku | stock | ctn | inr | pcs | total | price | amount | del */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '38px 1fr 72px 88px 58px 58px 58px 54px 82px 88px 28px',
+                gridTemplateColumns: '38px 1fr 72px 88px 66px 66px 66px 54px 82px 88px 28px',
                 gap: '0.5rem',
                 alignItems: 'center',
                 padding: '0.35rem 0.75rem',
@@ -550,25 +604,36 @@ const DirectOrder: React.FC = () => {
               {/* ── ITEM ROWS ── */}
               <div style={{ flex: 1, overflowY: 'auto', maxHeight: 540, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {items.map(item => {
-                  const lineTotal  = item.totalQtyPcs * item.pricePerUnit * (1 + (item.gstRate || 0) / 100);
-                  const remaining  = item.availableQty - item.totalQtyPcs;
-                  const isOut      = item.availableQty === 0;
+                  const safeAvail    = item.availableQty  ?? 0;
+                  const safeCartons  = item.stockCartons  ?? 0;
+                  const safeInners   = item.stockInners   ?? 0;
+                  const safeLoose    = item.stockLoose    ?? 0;
+                  const safeTotalPcs = item.totalQtyPcs   ?? 0;
+                  const lineTotal  = safeTotalPcs * (item.pricePerUnit || 0) * (1 + (item.gstRate || 0) / 100);
+                  const remaining  = safeAvail - safeTotalPcs;
+                  const isOut      = safeAvail === 0;
                   const isOver     = remaining < 0;
                   // Per-unit level check
-                  const hasBreakdown = item.stockCartons > 0 || item.stockInners > 0 || item.stockLoose > 0;
-                  const cartonOver = hasBreakdown && item.cartonQty > item.stockCartons;
-                  const innerOver  = hasBreakdown && item.innerQty  > item.stockInners;
-                  const looseOver  = hasBreakdown && item.looseQty  > item.stockLoose;
+                  const hasBreakdown = safeCartons > 0 || safeInners > 0 || safeLoose > 0;
+                  // Greedy fallback for display when no breakdown stored yet
+                  const ppi = item.pcsPerInner > 0 ? item.pcsPerInner : 1;
+                  const ppc = item.innerPerCarton > 0 ? item.innerPerCarton : 1;
+                  const dispCartons = hasBreakdown ? safeCartons : (item.innerPerCarton > 1 ? Math.floor(safeAvail / ppc) : 0);
+                  const dispInners  = hasBreakdown ? safeInners  : (item.pcsPerInner > 1   ? Math.floor((safeAvail - dispCartons * ppc) / ppi) : 0);
+                  const dispLoose   = hasBreakdown ? safeLoose   : (safeAvail - dispCartons * ppc - dispInners * ppi);
+                  const cartonOver = hasBreakdown && item.cartonQty > safeCartons;
+                  const innerOver  = hasBreakdown && item.innerQty  > safeInners;
+                  const looseOver  = hasBreakdown && item.looseQty  > safeLoose;
                   const unitOver   = cartonOver || innerOver || looseOver;
                   const isLow      = !isOut && !isOver && !unitOver && remaining < 10;
                   const stockColor = isOut || isOver || unitOver ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)';
                   const stockBg    = isOut || isOver || unitOver ? 'rgba(239,68,68,0.10)' : isLow ? 'rgba(245,158,11,0.10)' : 'rgba(16,185,129,0.10)';
                   const stockLabel = isOut ? '⚠ No Stock'
-                    : cartonOver ? `⚠ Only ${item.stockCartons} CTN`
-                    : innerOver  ? `⚠ Only ${item.stockInners} INR`
-                    : looseOver  ? `⚠ Only ${item.stockLoose} PCS`
+                    : cartonOver ? `⚠ Only ${dispCartons} CTN`
+                    : innerOver  ? `⚠ Only ${dispInners} INR`
+                    : looseOver  ? `⚠ Only ${dispLoose} PCS`
                     : isOver ? `⚠ Over ${Math.abs(remaining)}`
-                    : `${item.availableQty} → ${remaining}`;
+                    : `${safeAvail} → ${remaining}`;
 
                   const nextTierHint = (!item.isBulkPriced && item.bulkPricingTiers?.length && item.totalQtyPcs > 0)
                     ? (() => {
@@ -585,7 +650,7 @@ const DirectOrder: React.FC = () => {
                   return (
                     <div key={item.productId} style={{
                       display: 'grid',
-                      gridTemplateColumns: '38px 1fr 72px 88px 58px 58px 58px 54px 82px 88px 28px',
+                      gridTemplateColumns: '38px 1fr 72px 88px 66px 66px 66px 54px 82px 88px 28px',
                       gap: '0.5rem',
                       alignItems: 'center',
                       padding: '0.6rem 0.75rem',
@@ -630,41 +695,53 @@ const DirectOrder: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* CTN input */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <input type="number" min="0" value={item.cartonQty}
-                          onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
-                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver || (item.cartonQty > 0 && item.innerPerCarton <= 1) ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                        />
-                        {item.cartonQty > 0 && item.innerPerCarton <= 1 && (
-                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>No carton</span>
-                        )}
-                        {cartonOver && item.innerPerCarton > 1 && (
-                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Only {item.stockCartons} avail</span>
+                      {/* CTN input — hidden when no carton packaging */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                        {item.innerPerCarton <= 0 ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>—</span>
+                        ) : (
+                          <>
+                            <input type="number" min="0"
+                              value={item.cartonQty}
+                              onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
+                              style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                            />
+                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: cartonOver ? 'var(--danger)' : 'var(--text-muted)' }}>
+                              {cartonOver ? `⚠ Only ${dispCartons} CTN` : `${dispCartons} CTN`}
+                            </span>
+                          </>
                         )}
                       </div>
 
-                      {/* INR input */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <input type="number" min="0" value={item.innerQty}
-                          onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
-                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver || (item.innerQty > 0 && item.pcsPerInner <= 1) ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                        />
-                        {item.innerQty > 0 && item.pcsPerInner <= 1 && (
-                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>No inner</span>
-                        )}
-                        {innerOver && item.pcsPerInner > 1 && (
-                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Only {item.stockInners} avail</span>
+                      {/* INR input — hidden when no inner packaging */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                        {item.pcsPerInner <= 0 ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>—</span>
+                        ) : (
+                          <>
+                            <input type="number" min="0"
+                              value={item.innerQty}
+                              onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
+                              style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                            />
+                            <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: innerOver ? 'var(--danger)' : 'var(--text-muted)' }}>
+                              {innerOver ? `⚠ Only ${dispInners} INR` : `${dispInners} INR`}
+                            </span>
+                          </>
                         )}
                       </div>
 
                       {/* PCS input */}
-                      <input type="number" min="0" value={item.looseQty}
-                        onChange={e => updatePackaging(item.productId, 'looseQty', parseInt(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: '1.5px solid var(--border)', borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                        onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                        onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <input type="number" min="0" value={item.looseQty}
+                          onChange={e => updatePackaging(item.productId, 'looseQty', parseInt(e.target.value) || 0)}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${looseOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                        />
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
+                          color: looseOver ? 'var(--danger)' : 'var(--text-muted)' }}>
+                          {looseOver ? `⚠ Only ${dispLoose} PCS` : `${dispLoose} PCS`}
+                        </span>
+                      </div>
 
                       {/* Total pcs */}
                       <div style={{ textAlign: 'center' }}>
@@ -678,7 +755,7 @@ const DirectOrder: React.FC = () => {
                         {item.isBulkPriced ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#D97706', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
-                              ₹{item.pricePerUnit.toFixed(2)}
+                              ₹{(item.pricePerUnit || 0).toFixed(2)}
                             </span>
                             <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#D97706', background: 'rgba(245,158,11,0.13)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 3, padding: '0px 4px', whiteSpace: 'nowrap' }}>
                               📦 Bulk
@@ -687,7 +764,7 @@ const DirectOrder: React.FC = () => {
                         ) : (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)', lineHeight: 1 }}>
-                              ₹{item.pricePerUnit.toFixed(2)}
+                              ₹{(item.pricePerUnit || 0).toFixed(2)}
                             </span>
                           </div>
                         )}
