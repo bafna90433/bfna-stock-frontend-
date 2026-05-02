@@ -25,6 +25,48 @@ interface DispatchItem {
   stockStatus: 'available' | 'partial' | 'no_stock';
 }
 
+// Compute per-unit dispatch quantities for an item (same logic used in both render and submit)
+const computeItemDispatch = (item: DispatchItem) => {
+  const ppc = item.innerPerCarton || 0;
+  const ppi = item.pcsPerInner    || 0;
+  const hasCTN = (item.cartonQty || 0) > 0;
+  const hasINR = (item.innerQty  || 0) > 0;
+  const hasPCS = (item.looseQty  || 0) > 0;
+
+  const stockC = item.stockCartons ?? 0;
+  const stockI = item.stockInners  ?? 0;
+  const stockL = item.stockLoose   ?? 0;
+  const hasBreakdown = stockC > 0 || stockI > 0 || stockL > 0;
+
+  let dispCTN = 0;
+  let ctnWarning = false;
+  if (hasCTN) {
+    if (ppc > 0 && hasBreakdown) {
+      dispCTN = Math.min(stockC, item.cartonQty || 0);
+      if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
+    } else if (ppc > 0 && !hasBreakdown) {
+      const availCartons = Math.floor((item.availableQty || 0) / ppc);
+      dispCTN = Math.min(availCartons, item.cartonQty || 0);
+      if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
+    } else if (!hasINR && !hasPCS) {
+      dispCTN = item.cartonQty || 0; // only CTN ordered, no rate — treat as full
+    } else {
+      ctnWarning = true; // mixed order, no carton rate
+    }
+  }
+
+  let pcsLeft = item.qtyDispatched - dispCTN * ppc;
+  if (pcsLeft < 0) pcsLeft = 0;
+  const dispINR = hasINR && ppi > 0 ? Math.min(Math.floor(pcsLeft / ppi), item.innerQty || 0) : 0;
+  pcsLeft -= dispINR * ppi;
+  const dispPCS = hasPCS ? Math.min(pcsLeft, item.looseQty || 0) : 0;
+
+  // Pending CTN (not dispatched due to no stock)
+  const pendingCTN = ctnWarning ? (item.cartonQty || 0) - dispCTN : 0;
+
+  return { dispCTN, dispINR, dispPCS, ctnWarning, pendingCTN, hasCTN, hasINR, hasPCS };
+};
+
 // Show ordered quantities using the stored cartonQty / innerQty / looseQty fields directly
 // (avoids divide-by-zero and wrong unit conversion when packaging rate = 0)
 const formatOrderLabel = (item: DispatchItem): string => {
@@ -118,19 +160,30 @@ const DispatchOrder: React.FC = () => {
       return;
     }
 
-    const hasAny = items.some(i => i.qtyDispatched > 0);
+    // Build per-unit dispatch payload (only dispatch what's actually available)
+    const dispatchPayload = items.map(i => {
+      const { dispCTN, dispINR, dispPCS } = computeItemDispatch(i);
+      const ppc = i.innerPerCarton || 0;
+      const ppi = i.pcsPerInner    || 0;
+      const actualQty = dispCTN * ppc + dispINR * ppi + dispPCS;
+      return {
+        productId: i.productId, productName: i.productName, sku: i.sku,
+        imageUrl: i.imageUrl, unit: i.unit, qtyOrdered: i.qtyOrdered,
+        qtyDispatched: actualQty,
+        cartonQty: dispCTN, innerQty: dispINR, looseQty: dispPCS,
+        stockStatus: i.stockStatus,
+        pcsPerInner: i.pcsPerInner, innerPerCarton: i.innerPerCarton,
+        price: i.price,
+      };
+    }).filter(i => i.qtyDispatched > 0 || i.cartonQty > 0 || i.innerQty > 0 || i.looseQty > 0);
+
+    const hasAny = dispatchPayload.length > 0;
     if (!hasAny) return toast.error('At least one item must have stock to dispatch');
     setSubmitting(true);
     try {
       await api.post('/dispatch', {
         orderId,
-        items: items.map(i => ({
-          productId: i.productId, productName: i.productName, sku: i.sku,
-          imageUrl: i.imageUrl, unit: i.unit, qtyOrdered: i.qtyOrdered,
-          qtyDispatched: i.qtyDispatched, stockStatus: i.stockStatus,
-          pcsPerInner: i.pcsPerInner, innerPerCarton: i.innerPerCarton,
-          price: i.price,
-        })),
+        items: dispatchPayload,
         expDeliveryDate,
         notes: finalNote,
       });
@@ -150,6 +203,11 @@ const DispatchOrder: React.FC = () => {
   const noStockCount = items.filter(i => i.stockStatus === 'no_stock').length;
   const allReady     = noStockCount === 0 && partialCount === 0;
   const nothingReady = readyCount === 0;
+
+  // Frontend-computed: any item has a CTN unit with no/partial stock
+  const anyItemHasCtnWarning = items.some(i => computeItemDispatch(i).ctnWarning);
+  // Items (or CTN units) that will remain pending after dispatch
+  const ctnPendingItems = items.filter(i => computeItemDispatch(i).pendingCTN > 0);
 
   const isAlreadyOnHold = (order.status === 'partial' && nothingReady) || (order.status === 'waiting' && !allReady);
   const isHoldMode = nothingReady || dispatchType === 'hold';
@@ -282,42 +340,7 @@ const DispatchOrder: React.FC = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {items.filter(i => i.qtyDispatched > 0).map(item => {
-              const ppc = item.innerPerCarton || 0;
-              const ppi = item.pcsPerInner    || 0;
-              const hasCTN = (item.cartonQty || 0) > 0;
-              const hasINR = (item.innerQty  || 0) > 0;
-              const hasPCS = (item.looseQty  || 0) > 0;
-
-              // Per-unit dispatch calculation
-              const stockC = item.stockCartons ?? 0;
-              const stockI = item.stockInners  ?? 0;
-              const stockL = item.stockLoose   ?? 0;
-              const hasBreakdown = stockC > 0 || stockI > 0 || stockL > 0;
-
-              let dispCTN = 0;
-              let ctnWarning = false;
-              if (hasCTN) {
-                if (ppc > 0 && hasBreakdown) {
-                  // Breakdown saved → use carton stock directly
-                  dispCTN = Math.min(stockC, item.cartonQty || 0);
-                  if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
-                } else if (ppc > 0 && !hasBreakdown) {
-                  // No breakdown but carton rate known → compute from total available pcs
-                  const availCartons = Math.floor((item.availableQty || 0) / ppc);
-                  dispCTN = Math.min(availCartons, item.cartonQty || 0);
-                  if (dispCTN < (item.cartonQty || 0)) ctnWarning = true;
-                } else if (!hasINR && !hasPCS) {
-                  // No carton rate, only CTN ordered → treat as full dispatch
-                  dispCTN = item.cartonQty || 0;
-                } else {
-                  // No carton rate, mixed with INR/PCS → CTN part can't be dispatched
-                  ctnWarning = true;
-                }
-              }
-              let pcsLeft = item.qtyDispatched - dispCTN * ppc;
-              const dispINR = hasINR && ppi > 0 ? Math.min(Math.floor(pcsLeft / ppi), item.innerQty || 0) : 0;
-              pcsLeft -= dispINR * ppi;
-              const dispPCS = Math.min(pcsLeft, item.looseQty || 0);
+              const { dispCTN, dispINR, dispPCS, ctnWarning, hasCTN, hasINR, hasPCS } = computeItemDispatch(item);
 
               return (
                 <div key={item.productId} style={{ background: 'rgba(16,185,129,0.04)', border: `1.5px solid ${ctnWarning ? '#F59E0B' : '#10B981'}`, borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -357,6 +380,39 @@ const DispatchOrder: React.FC = () => {
                         {hasINR && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispINR} INR</div>}
                         {hasPCS && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispPCS} PCS</div>}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* CTN units that will remain pending (no CTN stock) — shown in partial/send-now mode */}
+      {!isHoldMode && !nothingReady && ctnPendingItems.length > 0 && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Clock size={16} /> CTN Stock Missing — Will Remain Pending
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {ctnPendingItems.map(item => {
+              const { pendingCTN } = computeItemDispatch(item);
+              return (
+                <div key={item.productId} style={{ background: 'rgba(245,158,11,0.04)', border: '1.5px solid #F59E0B', borderRadius: 12, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {item.imageUrl
+                    ? <img src={item.imageUrl} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} alt={item.productName} />
+                    : <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', border: '1px solid var(--border)', flexShrink: 0 }}>📦</div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{item.productName}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#F59E0B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>⏳ Pending</div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#F59E0B' }}>{pendingCTN} CTN</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>Stock aane par jayega</div>
                     </div>
                   </div>
                 </div>
@@ -567,7 +623,7 @@ const DispatchOrder: React.FC = () => {
                 ? <><Loader size={17} style={{ animation: 'spin 1s linear infinite', marginRight: 6 }} />Processing...</>
                 : (nothingReady || dispatchType === 'hold')
                   ? <><Clock size={17} style={{ marginRight: 6 }} />Put on Hold</>
-                  : allReady
+                  : (allReady && !anyItemHasCtnWarning)
                     ? <><CheckCircle size={17} style={{ marginRight: 6 }} />Dispatch Now (Full Order)</>
                     : <><Truck size={17} style={{ marginRight: 6 }} />Dispatch Now (Available Stock)</>
               }
