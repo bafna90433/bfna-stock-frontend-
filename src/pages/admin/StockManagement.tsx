@@ -135,6 +135,27 @@ const StockManagement: React.FC = () => {
     } finally { setSubmitting(false); }
   };
 
+  const formatStock = (totalPcs: number, pcsPerInner: number, innerPerCarton: number) => {
+    const hasInner = pcsPerInner > 0;
+    const hasCarton = innerPerCarton > 0;
+    if (!hasInner && !hasCarton) return [{ val: totalPcs, label: 'pcs' }];
+    let remaining = totalPcs;
+    const parts: { val: number; label: string }[] = [];
+    if (hasCarton) {
+      const pcsPerCarton = pcsPerInner * innerPerCarton;
+      const ctns = Math.floor(remaining / pcsPerCarton);
+      remaining -= ctns * pcsPerCarton;
+      parts.push({ val: ctns, label: 'ctn' });
+    }
+    if (hasInner) {
+      const inners = Math.floor(remaining / pcsPerInner);
+      remaining -= inners * pcsPerInner;
+      parts.push({ val: inners, label: 'inr' });
+    }
+    parts.push({ val: remaining, label: 'pcs' });
+    return parts;
+  };
+
   const lowStock = products.filter(p => (p.stock?.availableQty || 0) > 0 && (p.stock?.availableQty || 0) < 5).length;
   const outOfStock = products.filter(p => (p.stock?.availableQty || 0) === 0).length;
   const noPriceCount = products.filter(p => !p.wholesalerPrice && !p.retailerPrice).length;
@@ -283,20 +304,27 @@ const StockManagement: React.FC = () => {
                         ) : <span style={{ color: 'var(--text-dim)', fontWeight: 500, fontSize: '0.78rem' }}>Not set</span>}
                       </td>
                       <td>
-                        <span style={{
-                          fontWeight: 800,
-                          fontSize: '1rem',
-                          color: (p.stock?.availableQty || 0) === 0 ? 'var(--danger)' :
-                            (p.stock?.availableQty || 0) < 5 ? 'var(--warning)' : 'var(--success)',
-                        }}>
-                          {p.stock?.availableQty || 0}
-                        </span>
-                        {(p.stock?.availableQty || 0) === 0 && (
-                          <span className="badge status-pending" style={{ marginLeft: 6, fontSize: '0.62rem' }}>Out</span>
-                        )}
-                        {(p.stock?.availableQty || 0) > 0 && (p.stock?.availableQty || 0) < 5 && (
-                          <span className="badge status-partial" style={{ marginLeft: 6, fontSize: '0.62rem' }}>Low</span>
-                        )}
+                        {(() => {
+                          const totalPcs = p.stock?.availableQty || 0;
+                          const stockColor = totalPcs === 0 ? 'var(--danger)' : totalPcs < 5 ? 'var(--warning)' : 'var(--success)';
+                          const parts = formatStock(totalPcs, p.pcsPerInner || 0, p.innerPerCarton || 0);
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              {parts.map((part, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color: stockColor, fontFamily: 'var(--font-mono)' }}>
+                                    {part.val}
+                                  </span>
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>
+                                    {part.label}
+                                  </span>
+                                </div>
+                              ))}
+                              {totalPcs === 0 && <span className="badge status-pending" style={{ fontSize: '0.58rem', marginTop: 1 }}>Out</span>}
+                              {totalPcs > 0 && totalPcs < 5 && <span className="badge status-partial" style={{ fontSize: '0.58rem', marginTop: 1 }}>Low</span>}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
