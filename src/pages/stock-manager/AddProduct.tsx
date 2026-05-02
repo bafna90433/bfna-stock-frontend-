@@ -16,6 +16,7 @@ const AddProduct: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
   const [success, setSuccess] = useState(false);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
+  const [currentStock, setCurrentStock] = useState<number | null>(null);
 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ const AddProduct: React.FC = () => {
         setBulkTiers(p.bulkPricingTiers.map((t: any) => ({ minQty: String(t.minQty), unit: t.unit || 'inner', price: String(t.price) })));
       }
       if (p.imageUrl) setPreview(p.imageUrl);
+      if (p.stock?.availableQty !== undefined) setCurrentStock(p.stock.availableQty);
     }).catch(() => toast.error('Failed to load product'));
   }, [id]);
 
@@ -239,6 +241,12 @@ const AddProduct: React.FC = () => {
                   </div>
                 )}
               </div>
+              {isEdit && currentStock !== null && (
+                <div style={{ margin: '0.5rem 0 0.3rem', padding: '0.45rem 0.75rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Stock:</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>{currentStock} pcs</span>
+                </div>
+              )}
               <SmartStockInput
                 pcsPerInner={Number(form.pcsPerInner) || 1}
                 pcsPerCarton={Number(form.innerPerCarton) || 1}
