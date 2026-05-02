@@ -749,7 +749,9 @@ const DirectOrder: React.FC = () => {
                         />
                         <span style={{ fontSize: '0.58rem', fontWeight: 700, lineHeight: 1.2, textAlign: 'center',
                           color: looseOver ? 'var(--danger)' : 'var(--text-muted)' }}>
-                          {looseOver ? `⚠ Only ${dispLoose} PCS` : `${dispLoose} PCS`}
+                          {(item.looseQty > 0 && dispLoose === 0) ? '⚠ No PCS stock'
+                            : looseOver ? `⚠ Only ${dispLoose} PCS`
+                            : `${dispLoose} PCS`}
                         </span>
                       </div>
 
