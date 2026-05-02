@@ -52,14 +52,7 @@ const SmartStockInput: React.FC<SmartStockInputProps> = ({
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-        <label className="form-label" style={{ marginBottom: 0 }}>{label}</label>
-        {currentStock !== undefined && (
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--success)', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 6, padding: '1px 8px', fontFamily: 'var(--font-mono)' }}>
-            Stock: {currentStock} pcs
-          </span>
-        )}
-      </div>
+      <label className="form-label">{label}</label>
 
       {/* Entry boxes */}
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -131,6 +124,24 @@ const SmartStockInput: React.FC<SmartStockInputProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Current stock display */}
+      {currentStock !== undefined && (
+        <div style={{
+          marginTop: '0.5rem',
+          padding: '0.35rem 0.75rem',
+          background: 'rgba(16,185,129,0.07)',
+          border: '1px solid rgba(16,185,129,0.2)',
+          borderRadius: 8,
+          display: 'flex', alignItems: 'center', gap: '0.4rem',
+        }}>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Stock:</span>
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>{currentStock} pcs</span>
+          {total > 0 && (
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 4 }}>→ after add: <strong style={{ color: 'var(--success)' }}>{currentStock + total} pcs</strong></span>
+          )}
+        </div>
+      )}
 
       {/* Calculation breakdown */}
       {total > 0 && (
