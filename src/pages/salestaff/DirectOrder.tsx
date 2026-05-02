@@ -20,7 +20,7 @@ interface Product {
   gstRate: number;
   pcsPerInner: number;
   innerPerCarton: number;
-  stock: { availableQty: number };
+  stock: { availableQty: number; stockCartons?: number; stockInners?: number; stockLoose?: number };
   bulkPricingTiers?: BulkTier[];
 }
 interface OrderItem {
@@ -42,6 +42,9 @@ interface OrderItem {
   bulkPricingTiers: BulkTier[]; // stored for re-evaluation on qty change
   gstRate: number;
   availableQty: number;
+  stockCartons: number;
+  stockInners: number;
+  stockLoose: number;
 }
 
 const DirectOrder: React.FC = () => {
@@ -254,6 +257,9 @@ const DirectOrder: React.FC = () => {
         bulkPricingTiers: tiers,
         gstRate: applyGst ? (Number(p.gstRate) || defaultGst) : 0,
         availableQty: p.stock?.availableQty || 0,
+        stockCartons: p.stock?.stockCartons ?? 0,
+        stockInners: p.stock?.stockInners ?? 0,
+        stockLoose: p.stock?.stockLoose ?? 0,
       };
       setItems([...items, newItem]);
     }
@@ -548,10 +554,19 @@ const DirectOrder: React.FC = () => {
                   const remaining  = item.availableQty - item.totalQtyPcs;
                   const isOut      = item.availableQty === 0;
                   const isOver     = remaining < 0;
-                  const isLow      = !isOut && !isOver && remaining < 10;
-                  const stockColor = isOut || isOver ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)';
-                  const stockBg    = isOut || isOver ? 'rgba(239,68,68,0.10)' : isLow ? 'rgba(245,158,11,0.10)' : 'rgba(16,185,129,0.10)';
+                  // Per-unit level check
+                  const hasBreakdown = item.stockCartons > 0 || item.stockInners > 0 || item.stockLoose > 0;
+                  const cartonOver = hasBreakdown && item.cartonQty > item.stockCartons;
+                  const innerOver  = hasBreakdown && item.innerQty  > item.stockInners;
+                  const looseOver  = hasBreakdown && item.looseQty  > item.stockLoose;
+                  const unitOver   = cartonOver || innerOver || looseOver;
+                  const isLow      = !isOut && !isOver && !unitOver && remaining < 10;
+                  const stockColor = isOut || isOver || unitOver ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)';
+                  const stockBg    = isOut || isOver || unitOver ? 'rgba(239,68,68,0.10)' : isLow ? 'rgba(245,158,11,0.10)' : 'rgba(16,185,129,0.10)';
                   const stockLabel = isOut ? '⚠ No Stock'
+                    : cartonOver ? `⚠ Only ${item.stockCartons} CTN`
+                    : innerOver  ? `⚠ Only ${item.stockInners} INR`
+                    : looseOver  ? `⚠ Only ${item.stockLoose} PCS`
                     : isOver ? `⚠ Over ${Math.abs(remaining)}`
                     : `${item.availableQty} → ${remaining}`;
 

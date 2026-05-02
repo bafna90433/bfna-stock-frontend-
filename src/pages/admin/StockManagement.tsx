@@ -4,7 +4,6 @@ import {
   ArrowUp, TrendingDown, Tag, Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { debounce } from '../../utils/debounce';
@@ -135,24 +134,33 @@ const StockManagement: React.FC = () => {
     } finally { setSubmitting(false); }
   };
 
-  const formatStock = (totalPcs: number, pcsPerInner: number, innerPerCarton: number) => {
-    const hasInner = pcsPerInner > 0;
-    const hasCarton = innerPerCarton > 0;
-    if (!hasInner && !hasCarton) return [{ val: totalPcs, label: 'pcs' }];
-    let remaining = totalPcs;
+  const formatStock = (product: any) => {
+    const totalPcs = product.stock?.availableQty || 0;
+    const pcsPerInner = product.pcsPerInner || 0;
+    const innerPerCarton = product.innerPerCarton || 0;
+    const hasInner = pcsPerInner > 1;
+    const hasCarton = innerPerCarton > 1;
+
+    const savedC = product.stock?.stockCartons ?? 0;
+    const savedI = product.stock?.stockInners ?? 0;
+    const savedL = product.stock?.stockLoose ?? 0;
+    const useSaved = totalPcs > 0 && (savedC > 0 || savedI > 0 || savedL > 0);
+
+    let ctns: number, inners: number, loose: number;
+    if (useSaved) {
+      ctns = savedC; inners = savedI; loose = savedL;
+    } else {
+      let remaining = totalPcs;
+      ctns = hasCarton ? Math.floor(remaining / innerPerCarton) : 0;
+      remaining = hasCarton ? remaining % innerPerCarton : remaining;
+      inners = hasInner ? Math.floor(remaining / pcsPerInner) : 0;
+      loose = hasInner ? remaining % pcsPerInner : remaining;
+    }
+
     const parts: { val: number; label: string }[] = [];
-    if (hasCarton) {
-      const pcsPerCarton = pcsPerInner * innerPerCarton;
-      const ctns = Math.floor(remaining / pcsPerCarton);
-      remaining -= ctns * pcsPerCarton;
-      parts.push({ val: ctns, label: 'ctn' });
-    }
-    if (hasInner) {
-      const inners = Math.floor(remaining / pcsPerInner);
-      remaining -= inners * pcsPerInner;
-      parts.push({ val: inners, label: 'inr' });
-    }
-    parts.push({ val: remaining, label: 'pcs' });
+    if (hasCarton) parts.push({ val: ctns, label: 'ctn' });
+    if (hasInner) parts.push({ val: inners, label: 'inr' });
+    parts.push({ val: loose, label: 'pcs' });
     const nonZero = parts.filter(p => p.val > 0);
     return nonZero.length > 0 ? nonZero : [{ val: 0, label: 'pcs' }];
   };
@@ -308,7 +316,7 @@ const StockManagement: React.FC = () => {
                         {(() => {
                           const totalPcs = p.stock?.availableQty || 0;
                           const stockColor = totalPcs === 0 ? 'var(--danger)' : totalPcs < 5 ? 'var(--warning)' : 'var(--success)';
-                          const parts = formatStock(totalPcs, p.pcsPerInner || 0, p.innerPerCarton || 0);
+                          const parts = formatStock(p);
                           return (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                               {parts.map((part, i) => (
@@ -382,13 +390,17 @@ const StockManagement: React.FC = () => {
                 </div>
               </div>
             </div>
-            <SmartStockInput
-              pcsPerInner={Number(stockModal.product.pcsPerInner) || 1}
-              pcsPerCarton={Number(stockModal.product.innerPerCarton) || 1}
-              value={Number(qty) || 0}
-              onChange={total => setQty(String(total))}
-              label="Quantity to Add"
-            />
+            <div className="form-group">
+              <label className="form-label">Quantity to Add</label>
+              <input
+                className="form-control"
+                type="number" min="0"
+                value={qty}
+                onChange={e => setQty(e.target.value)}
+                placeholder="0"
+                style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '1rem' }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setStockModal(null)}>Cancel</button>
               <button className="btn btn-success" onClick={handleStockAdd} disabled={submitting}>

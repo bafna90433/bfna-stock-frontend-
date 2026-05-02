@@ -12,6 +12,7 @@ const BillView: React.FC = () => {
 
   const [bill, setBill] = useState<any>(null);
   const [customerAddress, setCustomerAddress] = useState<any>(null);
+  const [orderExtra, setOrderExtra] = useState<any>(null);
   const [paperImageUrl, setPaperImageUrl] = useState<string | null>(null);
   const [imageZoomed, setImageZoomed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -29,9 +30,23 @@ const BillView: React.FC = () => {
       if (data.orderId) {
         // Try source 1: paperOrderImageUrl stored on the Order document
         try {
-          const { data: order } = await api.get(`/orders/${data.orderId}`);
-          if (order.customerAddress) setCustomerAddress(order.customerAddress);
-          if (order.paperOrderImageUrl) {
+          const [orderRes, dispatchRes] = await Promise.allSettled([
+            api.get(`/orders/${data.orderId}`),
+            data.dispatchId ? api.get(`/dispatch/${data.dispatchId}`) : Promise.reject('no dispatch'),
+          ]);
+
+          const order = orderRes.status === 'fulfilled' ? orderRes.value.data : null;
+          const dispatch = dispatchRes.status === 'fulfilled' ? dispatchRes.value.data : null;
+
+          if (order?.customerAddress) setCustomerAddress(order.customerAddress);
+          setOrderExtra({
+            salesmanName: order?.salesmanName || null,
+            customerType: order?.customerType || null,
+            transportName: dispatch?.transportName || null,
+            lrNumber: dispatch?.lrNumber || null,
+          });
+
+          if (order?.paperOrderImageUrl) {
             setPaperImageUrl(order.paperOrderImageUrl);
             return;
           }
@@ -191,7 +206,52 @@ const BillView: React.FC = () => {
                   )}
                 </div>
               )}
-              <div className="invoice-meta-sub" style={{ marginTop: '0.25rem' }}>Order: {bill.orderNumber}</div>
+              <div className="invoice-meta-sub" style={{ marginTop: '0.3rem' }}>
+                <span style={{ marginRight: '0.75rem' }}>Order: <strong>{bill.orderNumber}</strong></span>
+              </div>
+              {/* Extra order info row */}
+              {orderExtra && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem 1rem', marginTop: '0.5rem' }}>
+                  {orderExtra.salesmanName && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Salesman: </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text)' }}>{orderExtra.salesmanName}</span>
+                    </div>
+                  )}
+                  {orderExtra.customerType && (
+                    <div style={{ fontSize: '0.75rem' }}>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '1px 8px',
+                          borderRadius: 20,
+                          fontWeight: 700,
+                          fontSize: '0.7rem',
+                          textTransform: 'capitalize',
+                          background: orderExtra.customerType === 'retailer'
+                            ? 'rgba(99,102,241,0.12)' : 'rgba(16,185,129,0.12)',
+                          color: orderExtra.customerType === 'retailer' ? '#6366F1' : '#10B981',
+                          border: `1px solid ${orderExtra.customerType === 'retailer' ? 'rgba(99,102,241,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                        }}
+                      >
+                        {orderExtra.customerType === 'retailer' ? '🏪 Retailer' : '🏭 Wholesaler'}
+                      </span>
+                    </div>
+                  )}
+                  {orderExtra.transportName && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Transport: </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text)' }}>{orderExtra.transportName}</span>
+                    </div>
+                  )}
+                  {orderExtra.lrNumber && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>LR No: </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{orderExtra.lrNumber}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="invoice-meta-cell" style={{ textAlign: 'right' }}>
               <div className="invoice-meta-label">Amount Due</div>

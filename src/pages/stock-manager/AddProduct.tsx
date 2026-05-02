@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package, X, Save, Loader, ImageIcon, CheckCircle, Plus, ArrowLeft } from 'lucide-react';
-import SmartStockInput from '../../components/SmartStockInput';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
@@ -52,7 +51,29 @@ const AddProduct: React.FC = () => {
         setBulkTiers(p.bulkPricingTiers.map((t: any) => ({ minQty: String(t.minQty), unit: t.unit || 'inner', price: String(t.price) })));
       }
       if (p.imageUrl) setPreview(p.imageUrl);
-      if (p.stock?.availableQty !== undefined) setCurrentStock(p.stock.availableQty);
+      if (p.stock?.availableQty !== undefined) {
+        const qty = p.stock.availableQty;
+        setCurrentStock(qty);
+        const c = p.stock.stockCartons ?? 0;
+        const inn = p.stock.stockInners ?? 0;
+        const l = p.stock.stockLoose ?? 0;
+        if (qty > 0 && c === 0 && inn === 0 && l === 0) {
+          // old record — compute greedy breakdown
+          const ppc = Number(p.innerPerCarton ?? 0);
+          const ppi = Number(p.pcsPerInner ?? 0);
+          const cartons = ppc > 1 ? Math.floor(qty / ppc) : 0;
+          const rem = ppc > 1 ? qty % ppc : qty;
+          const inners = ppi > 1 ? Math.floor(rem / ppi) : 0;
+          const loose = ppi > 1 ? rem % ppi : rem;
+          setStockCartons(cartons);
+          setStockInners(inners);
+          setStockLoose(loose);
+        } else {
+          setStockCartons(c);
+          setStockInners(inn);
+          setStockLoose(l);
+        }
+      }
     }).catch(() => toast.error('Failed to load product'));
   }, [id]);
 
@@ -71,6 +92,16 @@ const AddProduct: React.FC = () => {
     innerPerCarton: '0',
   });
   const [bulkTiers, setBulkTiers] = useState<{ minQty: string; unit: 'pcs' | 'inner' | 'carton'; price: string }[]>([]);
+  const [stockCartons, setStockCartons] = useState(0);
+  const [stockInners, setStockInners] = useState(0);
+  const [stockLoose, setStockLoose] = useState(0);
+
+  useEffect(() => {
+    const ppc = Number(form.innerPerCarton) || 0;
+    const ppi = Number(form.pcsPerInner) || 0;
+    const total = (stockCartons * (ppc > 1 ? ppc : 0)) + (stockInners * (ppi > 1 ? ppi : 0)) + stockLoose;
+    setForm(f => ({ ...f, initialQty: String(total) }));
+  }, [stockCartons, stockInners, stockLoose, form.innerPerCarton, form.pcsPerInner]);
 
   const handleFileChange = (f: File) => {
     if (f.size > 10 * 1024 * 1024) { toast.error('Image must be under 10MB'); return; }
@@ -117,10 +148,17 @@ const AddProduct: React.FC = () => {
 
       if (isEdit) {
         await api.put(`/products/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-        const addQty = Number(form.initialQty) || 0;
-        if (addQty > 0) {
-          await api.patch(`/products/${id}/stock`, { qty: addQty, operation: 'add' });
-        }
+        const ppc = Number(form.innerPerCarton) || 0;
+        const ppi = Number(form.pcsPerInner) || 0;
+        const newQty = (stockCartons * (ppc > 1 ? ppc : 0)) + (stockInners * (ppi > 1 ? ppi : 0)) + stockLoose;
+        await api.patch(`/products/${id}/stock`, {
+          qty: newQty,
+          operation: 'set',
+          cartons: stockCartons,
+          inners: stockInners,
+          loose: stockLoose,
+        });
+        setCurrentStock(newQty);
         toast.success('Product updated successfully!');
         setSuccess(true);
         setTimeout(() => navigate('/stock-manager/products'), 1500);
@@ -132,6 +170,7 @@ const AddProduct: React.FC = () => {
           setSuccess(false);
           setForm({ name: '', sku: '', unit: 'pcs', wholesalerPrice: '', wholesalerMrp: '', retailerPrice: '', retailerMrp: '', category: categories[0]?.name || '', description: '', initialQty: '0', pcsPerInner: '0', innerPerCarton: '0' });
           setBulkTiers([]);
+          setStockCartons(0); setStockInners(0); setStockLoose(0);
           setPreview(null);
           setFile(null);
         }, 2000);
@@ -240,13 +279,67 @@ const AddProduct: React.FC = () => {
                   </div>
                 )}
               </div>
-              <SmartStockInput
-                pcsPerInner={Number(form.pcsPerInner) || 1}
-                pcsPerCarton={Number(form.innerPerCarton) || 1}
-                value={Number(form.initialQty) || 0}
-                onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
-                label={isEdit ? 'Add Stock (adds to current)' : 'Initial Stock Qty'}
-              />
+              {(() => {
+                const ppc = Number(form.innerPerCarton) || 0;
+                const ppi = Number(form.pcsPerInner) || 0;
+                const hasCarton = ppc > 1;
+                const hasInner = ppi > 1;
+                const total = (stockCartons * (hasCarton ? ppc : 0)) + (stockInners * (hasInner ? ppi : 0)) + stockLoose;
+                const boxInput: React.CSSProperties = { width: '100%', background: 'white', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.85rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)', textAlign: 'center', boxSizing: 'border-box' };
+                return (
+                  <div>
+                    <label className="form-label">{isEdit ? 'Stock Quantity' : 'Initial Stock Qty'}</label>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      {hasCarton && (
+                        <div style={{ flex: 1, minWidth: 90 }}>
+                          <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: 12, padding: '0.75rem' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>📦 Carton</div>
+                            <input type="number" min="0" style={boxInput} placeholder="0"
+                              value={stockCartons || ''}
+                              onChange={e => setStockCartons(Math.max(0, Number(e.target.value) || 0))}
+                            />
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '0.3rem', textAlign: 'center' }}>1 Carton = {ppc} Pcs</div>
+                          </div>
+                        </div>
+                      )}
+                      {hasInner && (
+                        <div style={{ flex: 1, minWidth: 90 }}>
+                          <div style={{ background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.18)', borderRadius: 12, padding: '0.75rem' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#06B6D4', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>🗂 Inner</div>
+                            <input type="number" min="0" style={boxInput} placeholder="0"
+                              value={stockInners || ''}
+                              onChange={e => setStockInners(Math.max(0, Number(e.target.value) || 0))}
+                            />
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '0.3rem', textAlign: 'center' }}>1 Inner = {ppi} Pcs</div>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 90 }}>
+                        <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)', borderRadius: 12, padding: '0.75rem' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>🔩 Loose Pcs</div>
+                          <input type="number" min="0" style={boxInput} placeholder="0"
+                            value={stockLoose || ''}
+                            onChange={e => setStockLoose(Math.max(0, Number(e.target.value) || 0))}
+                          />
+                          <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '0.3rem', textAlign: 'center' }}>Individual pieces</div>
+                        </div>
+                      </div>
+                    </div>
+                    {total > 0 && (
+                      <div style={{ marginTop: '0.6rem', padding: '0.6rem 1rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(6,182,212,0.06))', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                          {[hasCarton && stockCartons > 0 && `${stockCartons} × ${ppc}`, hasInner && stockInners > 0 && `${stockInners} × ${ppi}`, stockLoose > 0 && `${stockLoose}`].filter(Boolean).join(' + ')}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total</span>
+                          <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#10B981', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}>{total.toLocaleString()}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Pcs</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Pricing Card — open to all */}
