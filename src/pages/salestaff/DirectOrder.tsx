@@ -631,28 +631,32 @@ const DirectOrder: React.FC = () => {
                       </div>
 
                       {/* CTN input */}
-                      {item.innerPerCarton > 1 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <input type="number" min="0" value={item.cartonQty}
                           onChange={e => updatePackaging(item.productId, 'cartonQty', parseInt(e.target.value) || 0)}
-                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                          onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                          onBlur={e => (e.target.style.borderColor = cartonOver ? 'var(--danger)' : 'var(--border)')}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${cartonOver || (item.cartonQty > 0 && item.innerPerCarton <= 1) ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
                         />
-                      ) : (
-                        <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>—</div>
-                      )}
+                        {item.cartonQty > 0 && item.innerPerCarton <= 1 && (
+                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>No carton</span>
+                        )}
+                        {cartonOver && item.innerPerCarton > 1 && (
+                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Only {item.stockCartons} avail</span>
+                        )}
+                      </div>
 
                       {/* INR input */}
-                      {item.pcsPerInner > 1 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <input type="number" min="0" value={item.innerQty}
                           onChange={e => updatePackaging(item.productId, 'innerQty', parseInt(e.target.value) || 0)}
-                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
-                          onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                          onBlur={e => (e.target.style.borderColor = innerOver ? 'var(--danger)' : 'var(--border)')}
+                          style={{ width: '100%', padding: '0.28rem 0.1rem', fontSize: '0.88rem', fontWeight: 700, textAlign: 'center', border: `1.5px solid ${innerOver || (item.innerQty > 0 && item.pcsPerInner <= 1) ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 6, background: 'var(--bg2)', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
                         />
-                      ) : (
-                        <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>—</div>
-                      )}
+                        {item.innerQty > 0 && item.pcsPerInner <= 1 && (
+                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>No inner</span>
+                        )}
+                        {innerOver && item.pcsPerInner > 1 && (
+                          <span style={{ fontSize: '0.55rem', color: 'var(--danger)', fontWeight: 700, textAlign: 'center', lineHeight: 1.2 }}>Only {item.stockInners} avail</span>
+                        )}
+                      </div>
 
                       {/* PCS input */}
                       <input type="number" min="0" value={item.looseQty}
