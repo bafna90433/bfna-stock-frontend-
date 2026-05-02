@@ -17,6 +17,7 @@ const AddProduct: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
   const [currentStock, setCurrentStock] = useState<number | null>(null);
+  const [editedStock, setEditedStock] = useState<number | null>(null);
 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -52,7 +53,10 @@ const AddProduct: React.FC = () => {
         setBulkTiers(p.bulkPricingTiers.map((t: any) => ({ minQty: String(t.minQty), unit: t.unit || 'inner', price: String(t.price) })));
       }
       if (p.imageUrl) setPreview(p.imageUrl);
-      if (p.stock?.availableQty !== undefined) setCurrentStock(p.stock.availableQty);
+      if (p.stock?.availableQty !== undefined) {
+        setCurrentStock(p.stock.availableQty);
+        setEditedStock(p.stock.availableQty);
+      }
     }).catch(() => toast.error('Failed to load product'));
   }, [id]);
 
@@ -117,7 +121,13 @@ const AddProduct: React.FC = () => {
 
       if (isEdit) {
         await api.put(`/products/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-        // If user added stock, apply it
+        // If user directly changed current stock, set it to new value
+        if (editedStock !== null && currentStock !== null && editedStock !== currentStock) {
+          const delta = editedStock - currentStock;
+          if (delta > 0) await api.patch(`/products/${id}/stock`, { qty: delta, operation: 'add' });
+          else if (delta < 0) await api.patch(`/products/${id}/stock`, { qty: Math.abs(delta), operation: 'remove' });
+        }
+        // If user also added extra stock via SmartStockInput
         const addQty = Number(form.initialQty) || 0;
         if (addQty > 0) {
           await api.patch(`/products/${id}/stock`, { qty: addQty, operation: 'add' });
@@ -247,7 +257,8 @@ const AddProduct: React.FC = () => {
                 value={Number(form.initialQty) || 0}
                 onChange={total => setForm(f => ({ ...f, initialQty: String(total) }))}
                 label={isEdit ? 'Add Stock (adds to current)' : 'Initial Stock Qty'}
-                currentStock={isEdit ? (currentStock ?? undefined) : undefined}
+                currentStock={isEdit ? (editedStock ?? undefined) : undefined}
+                onCurrentStockChange={isEdit ? (v) => setEditedStock(v) : undefined}
               />
             </div>
 

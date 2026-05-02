@@ -8,6 +8,7 @@ interface SmartStockInputProps {
   onChange: (totalPcs: number) => void;
   label?: string;
   currentStock?: number;
+  onCurrentStockChange?: (val: number) => void;
 }
 
 const SmartStockInput: React.FC<SmartStockInputProps> = ({
@@ -17,6 +18,7 @@ const SmartStockInput: React.FC<SmartStockInputProps> = ({
   onChange,
   label = 'Stock Entry',
   currentStock,
+  onCurrentStockChange,
 }) => {
   const [cartons, setCartons] = useState(0);
   const [inners, setInners]   = useState(0);
@@ -125,20 +127,33 @@ const SmartStockInput: React.FC<SmartStockInputProps> = ({
         </div>
       </div>
 
-      {/* Current stock display */}
-      {currentStock !== undefined && (
+      {/* Current stock — editable */}
+      {currentStock !== undefined && onCurrentStockChange && (
         <div style={{
           marginTop: '0.5rem',
-          padding: '0.35rem 0.75rem',
+          padding: '0.4rem 0.75rem',
           background: 'rgba(16,185,129,0.07)',
           border: '1px solid rgba(16,185,129,0.2)',
           borderRadius: 8,
-          display: 'flex', alignItems: 'center', gap: '0.4rem',
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
         }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Current Stock:</span>
-          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>{currentStock} pcs</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Current Stock:</span>
+          <input
+            type="number"
+            min="0"
+            value={currentStock}
+            onChange={e => onCurrentStockChange(Math.max(0, Number(e.target.value) || 0))}
+            style={{
+              width: 80, fontWeight: 800, fontSize: '0.9rem', color: 'var(--success)',
+              fontFamily: 'var(--font-mono)', border: '1px solid rgba(16,185,129,0.35)',
+              borderRadius: 6, padding: '2px 6px', background: 'white', outline: 'none', textAlign: 'center',
+            }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>pcs</span>
           {total > 0 && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 4 }}>→ after add: <strong style={{ color: 'var(--success)' }}>{currentStock + total} pcs</strong></span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 4 }}>
+              → after: <strong style={{ color: 'var(--success)' }}>{currentStock + total} pcs</strong>
+            </span>
           )}
         </div>
       )}
