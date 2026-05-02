@@ -153,7 +153,8 @@ const StockManagement: React.FC = () => {
       parts.push({ val: inners, label: 'inr' });
     }
     parts.push({ val: remaining, label: 'pcs' });
-    return parts;
+    const nonZero = parts.filter(p => p.val > 0);
+    return nonZero.length > 0 ? nonZero : [{ val: 0, label: 'pcs' }];
   };
 
   const lowStock = products.filter(p => (p.stock?.availableQty || 0) > 0 && (p.stock?.availableQty || 0) < 5).length;
