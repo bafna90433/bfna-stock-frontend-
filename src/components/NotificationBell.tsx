@@ -226,6 +226,7 @@ const NotificationBell: React.FC = () => {
               notifs.map(n => (
                 <div
                   key={n._id}
+                  className={n.read ? '' : 'unread-notif'}
                   onClick={() => { markRead(n._id); setOpen(false); if (n.link) navigate(n.link); }}
                   style={{
                     padding: '0.75rem 1rem',
@@ -269,6 +270,15 @@ const NotificationBell: React.FC = () => {
         @keyframes bell-pulse {
           0%, 100% { transform: scale(1); }
           50%       { transform: scale(1.18); }
+        }
+        @keyframes unread-pulse {
+          0% { box-shadow: inset 4px 0 0 #6366F1; background: rgba(99,102,241,0.03); }
+          50% { box-shadow: inset 8px 0 0 #6366F1; background: rgba(99,102,241,0.08); }
+          100% { box-shadow: inset 4px 0 0 #6366F1; background: rgba(99,102,241,0.03); }
+        }
+        .unread-notif {
+          animation: unread-pulse 2s ease-in-out infinite;
+          border-left: 4px solid #6366F1 !important;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 5px;
