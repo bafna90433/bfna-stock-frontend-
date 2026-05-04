@@ -55,6 +55,7 @@ const DispatchDashboard: React.FC = () => {
           { label: 'Ready to Dispatch', icon: <Truck size={15} />, to: '/dispatch/ready', variant: 'secondary' },
           { label: 'View All Orders', icon: <Truck size={15} />, to: '/dispatch/orders', variant: 'primary' },
         ]}
+        showBell
       />
 
       {/* Stat Cards — 3 columns */}
