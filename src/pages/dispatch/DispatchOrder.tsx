@@ -141,14 +141,9 @@ const DispatchOrder: React.FC = () => {
           const pcsPerInner = item.pcsPerInner || 1;
           const pcsPerCarton = item.innerPerCarton || 1; // 1 CTN = innerPerCarton pcs
 
-          let maxDispatch = Math.min(item.availableQty, item.remainingQty);
-
-          // Round down to complete units based on how the item was ordered
-          if ((item.cartonQty || 0) > 0) {
-            maxDispatch = Math.floor(maxDispatch / pcsPerCarton) * pcsPerCarton;
-          } else if ((item.innerQty || 0) > 0) {
-            maxDispatch = Math.floor(maxDispatch / pcsPerInner) * pcsPerInner;
-          }
+          const maxDispatch = Math.min(item.availableQty, item.remainingQty);
+          // Note: per-unit rounding (CTN/INR/PCS) is handled inside computeItemDispatch
+          // so we do NOT round maxDispatch here — rounding here causes loose PCS to be dropped
 
           return {
             ...item,
@@ -409,6 +404,31 @@ const DispatchOrder: React.FC = () => {
                           ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Break from Inner ({dispPCS})</div>
                           : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispPCS} PCS</div>
                         )}
+                      </div>
+                    </div>
+                    <div style={{ width: 1, height: 60, background: 'var(--border)' }} />
+                    {/* REMAINING AFTER DISPATCH — all 3 bins shown */}
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Remaining</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: ((item.stockCartons ?? 0) - dispCTN) > 0 ? 'var(--primary)' : 'var(--text-dim)' }}>
+                            {(item.stockCartons ?? 0) - dispCTN}
+                          </div>
+                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>CTN</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: ((item.stockInners ?? 0) - dispINR) > 0 ? '#D97706' : 'var(--text-dim)' }}>
+                            {(item.stockInners ?? 0) - dispINR}
+                          </div>
+                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>INR</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: ((item.stockLoose ?? 0) - dispPCS) > 0 ? '#10B981' : 'var(--text-dim)' }}>
+                            {(item.stockLoose ?? 0) - dispPCS}
+                          </div>
+                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>PCS</div>
+                        </div>
                       </div>
                     </div>
                   </div>
