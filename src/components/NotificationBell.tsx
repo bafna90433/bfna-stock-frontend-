@@ -271,40 +271,22 @@ const NotificationBell: React.FC = () => {
           0%, 100% { transform: scale(1); }
           50%       { transform: scale(1.18); }
         }
-        @keyframes unread-glow {
-          0% { background: rgba(255,255,255,1); box-shadow: 0 0 5px rgba(99,102,241,0.05); }
-          50% { background: rgba(99,102,241,0.04); box-shadow: 0 0 15px rgba(99,102,241,0.15); }
-          100% { background: rgba(255,255,255,1); box-shadow: 0 0 5px rgba(99,102,241,0.05); }
-        }
-        @keyframes border-rotate {
-          100% { transform: rotate(360deg); }
+        @keyframes breathing-glow {
+          0% { border-color: rgba(99,102,241,0.3); box-shadow: 0 0 2px rgba(99,102,241,0.1), inset 0 0 2px rgba(99,102,241,0.05); background: #fff; }
+          50% { border-color: rgba(99,102,241,1); box-shadow: 0 0 12px rgba(99,102,241,0.4), inset 0 0 8px rgba(99,102,241,0.1); background: rgba(99,102,241,0.03); }
+          100% { border-color: rgba(99,102,241,0.3); box-shadow: 0 0 2px rgba(99,102,241,0.1), inset 0 0 2px rgba(99,102,241,0.05); background: #fff; }
         }
         .unread-notif {
-          animation: unread-glow 3s ease-in-out infinite;
-          margin: 6px 10px;
+          animation: breathing-glow 2.5s ease-in-out infinite;
+          margin: 8px 12px;
           border-radius: 12px;
+          border: 1.5px solid rgba(99,102,241,0.3) !important;
           position: relative;
-          z-index: 1;
-          border: 1px solid transparent !important;
-          background-clip: padding-box !important;
-          background: #fff;
+          transition: all 0.3s ease;
         }
-        .unread-notif::before {
-          content: '';
-          position: absolute;
-          inset: -2px;
-          z-index: -1;
-          background: conic-gradient(from 0deg, #6366F1, transparent 20%, transparent 80%, #6366F1);
-          border-radius: 14px;
-          animation: border-rotate 2.5s linear infinite;
-        }
-        .unread-notif::after {
-          content: '';
-          position: absolute;
-          inset: 1px;
-          background: #fff;
-          z-index: -1;
-          border-radius: 11px;
+        .unread-notif:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(99,102,241,0.2) !important;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 5px;
