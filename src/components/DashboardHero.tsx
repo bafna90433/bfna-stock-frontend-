@@ -166,7 +166,7 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
 
         {/* RIGHT: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          <NotificationBell />
+          {['sale_staff', 'billing', 'admin'].includes(user?.role || '') && <NotificationBell />}
           {onRefresh && (
             <button
               onClick={onRefresh}
