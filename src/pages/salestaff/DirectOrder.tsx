@@ -163,7 +163,7 @@ const DirectOrder: React.FC = () => {
                 const { data: p } = await api.get(`/products/${item.productId}`);
                 return {
                   ...item,
-                  availableQty:  p.stock?.availableQty  ?? 0,
+                  availableQty:  (p.stock?.availableQty ?? 0) + (item.qtyOrdered || 0),
                   stockCartons:  p.stock?.stockCartons  ?? 0,
                   stockInners:   p.stock?.stockInners   ?? 0,
                   stockLoose:    p.stock?.stockLoose    ?? 0,
@@ -707,7 +707,7 @@ const DirectOrder: React.FC = () => {
                           color: (cartonOver || (item.cartonQty > 0 && dispCartons === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
                           {(item.cartonQty > 0 && dispCartons === 0) ? '⚠ No CTN stock'
                             : cartonOver ? `⚠ Only ${dispCartons} CTN`
-                            : `${dispCartons} CTN`}
+                            : `${dispCartons} → ${Math.max(0, dispCartons - item.cartonQty)} CTN`}
                         </span>
                       </div>
 
@@ -722,7 +722,7 @@ const DirectOrder: React.FC = () => {
                           color: (innerOver || (item.innerQty > 0 && dispInners === 0)) ? 'var(--danger)' : 'var(--text-muted)' }}>
                           {(item.innerQty > 0 && dispInners === 0) ? '⚠ No INR stock'
                             : innerOver ? `⚠ Only ${dispInners} INR`
-                            : `${dispInners} INR`}
+                            : `${dispInners} → ${Math.max(0, dispInners - item.innerQty)} INR`}
                         </span>
                       </div>
 
@@ -736,7 +736,7 @@ const DirectOrder: React.FC = () => {
                           color: looseOver ? 'var(--danger)' : 'var(--text-muted)' }}>
                           {(item.looseQty > 0 && dispLoose === 0) ? '⚠ No PCS stock'
                             : looseOver ? `⚠ Only ${dispLoose} PCS`
-                            : `${dispLoose} PCS`}
+                            : `${dispLoose} → ${Math.max(0, dispLoose - item.looseQty)} PCS`}
                         </span>
                       </div>
 

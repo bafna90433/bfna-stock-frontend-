@@ -19,6 +19,7 @@ import StockManagerDashboard from './pages/stock-manager/StockManagerDashboard';
 import CategoryManagement from './pages/admin/CategoryManagement';
 import StockManagement from './pages/admin/StockManagement';
 import AddProduct from './pages/stock-manager/AddProduct';
+import StockHistory from './pages/stock-manager/StockHistory';
 
 // Staff Portal
 import StaffLayout from './pages/salestaff/StaffLayout';
@@ -108,6 +109,7 @@ function App() {
           <Route path="add-product" element={<AddProduct />} />
           <Route path="edit-product/:id" element={<AddProduct />} />
           <Route path="products" element={<Products />} />
+          <Route path="history" element={<StockHistory />} />
         </Route>
 
         {/* Staff Portal */}
