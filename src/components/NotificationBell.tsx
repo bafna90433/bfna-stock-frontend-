@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck, X, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
 interface Notif {
@@ -33,6 +34,7 @@ const timeAgo = (iso: string) => {
 const DROPDOWN_WIDTH = 340;
 
 const NotificationBell: React.FC = () => {
+  const navigate = useNavigate();
   const [notifs, setNotifs]   = useState<Notif[]>([]);
   const [open, setOpen]       = useState(false);
   const [loading, setLoading] = useState(false);
@@ -226,7 +228,7 @@ const NotificationBell: React.FC = () => {
               notifs.map(n => (
                 <div
                   key={n._id}
-                  onClick={() => { markRead(n._id); if (n.link) { setOpen(false); window.location.href = n.link; } else markRead(n._id); }}
+                  onClick={() => { markRead(n._id); setOpen(false); if (n.link) navigate(n.link); }}
                   style={{
                     padding: '0.75rem 1rem',
                     borderBottom: '1px solid var(--border)',
