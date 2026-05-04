@@ -61,7 +61,6 @@ const StaffDashboard: React.FC = () => {
           { label: 'Manage Orders', icon: <ShoppingCart size={15} />, to: '/sale-staff/manage-orders', variant: 'secondary' },
           { label: 'New Sales Order', icon: <Plus size={15} />, to: '/sale-staff/direct-order', variant: 'primary' },
         ]}
-        showBell
       />
 
       {/* Stat Cards */}

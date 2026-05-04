@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import DispatchSidebar from './DispatchSidebar';
+import NotificationBell from '../../components/NotificationBell';
 
 const DispatchLayout: React.FC = () => {
   const { user, token } = useAuthStore();
@@ -13,6 +14,9 @@ const DispatchLayout: React.FC = () => {
   return (
     <div className="app-layout">
       <DispatchSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 9998 }}>
+        <NotificationBell />
+      </div>
       <main className="main-content no-header">
         <Outlet />
       </main>

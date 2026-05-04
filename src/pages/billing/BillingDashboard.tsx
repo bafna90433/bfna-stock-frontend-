@@ -63,7 +63,6 @@ const BillingDashboard: React.FC = () => {
           { label: 'Ready for Bill', icon: <FileText size={15} />, to: '/billing/ready', variant: 'secondary' },
           { label: 'View Bills', icon: <FileText size={15} />, to: '/billing/generated', variant: 'primary' },
         ]}
-        showBell
       />
 
       {/* 3 Stat Cards */}

@@ -3,7 +3,6 @@ import { RefreshCw, Calendar, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getPortalConfig } from '../utils/portalConfig';
-import NotificationBell from './NotificationBell';
 
 interface HeroAction {
   label: string;
@@ -20,7 +19,6 @@ interface DashboardHeroProps {
   onRefresh?: () => void;
   refreshing?: boolean;
   stats?: Array<{ label: string; value: string | number; color?: string }>;
-  showBell?: boolean;
 }
 
 function getGreeting(): { text: string; emoji: string } {
@@ -41,7 +39,7 @@ function useLiveClock() {
 }
 
 const DashboardHero: React.FC<DashboardHeroProps> = ({
-  title, subtitle, actions = [], onRefresh, refreshing = false, stats, showBell = false,
+  title, subtitle, actions = [], onRefresh, refreshing = false, stats,
 }) => {
   const { user } = useAuthStore();
   const portal = getPortalConfig();
@@ -167,7 +165,6 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
 
         {/* RIGHT: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          {showBell && <NotificationBell />}
           {onRefresh && (
             <button
               onClick={onRefresh}
