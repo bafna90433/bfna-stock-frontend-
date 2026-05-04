@@ -159,7 +159,7 @@ const NotificationBell: React.FC = () => {
             right: dropPos.right,
             zIndex: 99999,
             width: DROPDOWN_WIDTH,
-            maxHeight: 440,
+            maxHeight: 'min(500px, 80vh)',
             background: 'var(--card)',
             border: '1px solid var(--border)',
             borderRadius: 14,
@@ -219,7 +219,7 @@ const NotificationBell: React.FC = () => {
           </div>
 
           {/* List */}
-          <div style={{ overflowY: 'auto', flex: 1 }}>
+          <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }} className="custom-scrollbar">
             {notifs.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                 🔔 No notifications yet
@@ -271,6 +271,19 @@ const NotificationBell: React.FC = () => {
         @keyframes bell-pulse {
           0%, 100% { transform: scale(1); }
           50%       { transform: scale(1.18); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(0,0,0,0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(0,0,0,0.2);
         }
       `}</style>
     </>
