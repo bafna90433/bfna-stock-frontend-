@@ -14,7 +14,7 @@ const StaffLayout: React.FC = () => {
   return (
     <div className="app-layout">
       <StaffSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 9998 }}>
+      <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 99999 }}>
         <NotificationBell />
       </div>
       <main className="main-content no-header">

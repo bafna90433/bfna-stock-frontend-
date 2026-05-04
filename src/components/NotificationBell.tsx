@@ -117,19 +117,19 @@ const NotificationBell: React.FC = () => {
         onClick={toggleOpen}
         style={{
           position: 'relative',
-          background: open ? 'white' : 'rgba(255,255,255,0.7)',
-          border: '1px solid var(--border)',
-          borderRadius: 10,
+          background: open ? '#6366F1' : '#fff',
+          border: '1.5px solid var(--border)',
+          borderRadius: 12,
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--text-muted)',
-          backdropFilter: 'blur(8px)',
+          color: open ? '#fff' : '#6366F1',
           transition: 'all 0.15s',
-          width: 38,
-          height: 38,
+          width: 42,
+          height: 42,
           flexShrink: 0,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         }}
       >
         <Bell size={17} />
