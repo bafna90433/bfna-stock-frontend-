@@ -272,21 +272,21 @@ const NotificationBell: React.FC = () => {
           50%       { transform: scale(1.18); }
         }
         @keyframes breathing-glow {
-          0% { border-color: rgba(99,102,241,0.3); box-shadow: 0 0 2px rgba(99,102,241,0.1), inset 0 0 2px rgba(99,102,241,0.05); background: #fff; }
-          50% { border-color: rgba(99,102,241,1); box-shadow: 0 0 12px rgba(99,102,241,0.4), inset 0 0 8px rgba(99,102,241,0.1); background: rgba(99,102,241,0.03); }
-          100% { border-color: rgba(99,102,241,0.3); box-shadow: 0 0 2px rgba(99,102,241,0.1), inset 0 0 2px rgba(99,102,241,0.05); background: #fff; }
+          0% { border-color: rgba(239,68,68,0.3); box-shadow: 0 0 2px rgba(239,68,68,0.1), inset 0 0 2px rgba(239,68,68,0.05); background: #fff; }
+          50% { border-color: rgba(239,68,68,1); box-shadow: 0 0 15px rgba(239,68,68,0.5), inset 0 0 10px rgba(239,68,68,0.15); background: rgba(239,68,68,0.04); }
+          100% { border-color: rgba(239,68,68,0.3); box-shadow: 0 0 2px rgba(239,68,68,0.1), inset 0 0 2px rgba(239,68,68,0.05); background: #fff; }
         }
         .unread-notif {
-          animation: breathing-glow 2.5s ease-in-out infinite;
+          animation: breathing-glow 2s ease-in-out infinite;
           margin: 8px 12px;
           border-radius: 12px;
-          border: 1.5px solid rgba(99,102,241,0.3) !important;
+          border: 1.5px solid rgba(239,68,68,0.3) !important;
           position: relative;
           transition: all 0.3s ease;
         }
         .unread-notif:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(99,102,241,0.2) !important;
+          box-shadow: 0 8px 25px rgba(239,68,68,0.25) !important;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 5px;
