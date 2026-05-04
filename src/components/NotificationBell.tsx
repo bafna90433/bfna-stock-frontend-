@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCheck, X } from 'lucide-react';
+import { Bell, CheckCheck, X, Trash2 } from 'lucide-react';
 import api from '../api/axios';
 
 interface Notif {
@@ -100,6 +100,13 @@ const NotificationBell: React.FC = () => {
     setLoading(false);
   };
 
+  const clearAll = async () => {
+    setLoading(true);
+    await api.delete('/notifications/clear-all');
+    setNotifs([]);
+    setLoading(false);
+  };
+
   return (
     <>
       {/* Bell button */}
@@ -178,21 +185,34 @@ const NotificationBell: React.FC = () => {
               )}
             </div>
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              {unread > 0 && (
+              <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                {unread > 0 && (
+                  <button
+                    onClick={markAll}
+                    disabled={loading}
+                    title="Mark all read"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, padding: '3px 6px', borderRadius: 6 }}
+                  >
+                    <CheckCheck size={13} /> Mark all
+                  </button>
+                )}
+                {notifs.length > 0 && (
+                  <button
+                    onClick={clearAll}
+                    disabled={loading}
+                    title="Clear all notifications"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#EF4444', display: 'flex', alignItems: 'center', gap: 3, padding: '3px 6px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 700 }}
+                  >
+                    <Trash2 size={13} /> Clear
+                  </button>
+                )}
                 <button
-                  onClick={markAll}
-                  disabled={loading}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, padding: '2px 6px', borderRadius: 6 }}
+                  onClick={() => setOpen(false)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}
                 >
-                  <CheckCheck size={13} /> Mark all read
+                  <X size={15} />
                 </button>
-              )}
-              <button
-                onClick={() => setOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}
-              >
-                <X size={15} />
-              </button>
+              </div>
             </div>
           </div>
 
