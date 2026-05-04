@@ -81,16 +81,19 @@ const NotificationBell: React.FC = () => {
         onClick={() => setOpen(o => !o)}
         style={{
           position: 'relative',
-          background: open ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.12)',
+          background: open ? 'white' : 'rgba(255,255,255,0.7)',
+          border: '1px solid var(--border)',
           borderRadius: 10,
           padding: '0.45rem 0.6rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--sidebar-text)',
+          color: 'var(--text-muted)',
+          backdropFilter: 'blur(8px)',
           transition: 'all 0.15s',
+          width: 38,
+          height: 38,
         }}
       >
         <Bell size={17} />
@@ -112,10 +115,9 @@ const NotificationBell: React.FC = () => {
       {/* Dropdown */}
       {open && (
         <div style={{
-          position: 'fixed',
-          top: 'auto',
-          left: 220,
-          bottom: 'auto',
+          position: 'absolute',
+          top: 'calc(100% + 8px)',
+          right: 0,
           zIndex: 9999,
           width: 320,
           maxHeight: 420,

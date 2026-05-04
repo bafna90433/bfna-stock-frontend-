@@ -3,6 +3,7 @@ import { RefreshCw, Calendar, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getPortalConfig } from '../utils/portalConfig';
+import NotificationBell from './NotificationBell';
 
 interface HeroAction {
   label: string;
@@ -165,6 +166,7 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
 
         {/* RIGHT: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <NotificationBell />
           {onRefresh && (
             <button
               onClick={onRefresh}
