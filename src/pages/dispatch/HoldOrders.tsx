@@ -116,7 +116,7 @@ const HoldOrders: React.FC = () => {
                       <span>📦 {order.items?.length} items</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <CalendarDays size={13} />
-                        Placed: {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        Placed: {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · {new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       {!isUrgent && daysOnHold > 0 && (
                         <span style={{ color: '#F59E0B', fontWeight: 600 }}>Waiting {daysOnHold} day{daysOnHold > 1 ? 's' : ''}</span>

@@ -184,6 +184,7 @@ const DispatchedItems: React.FC = () => {
       if (new Date(current.dispatchedAt) > new Date(existing.dispatchedAt)) {
         existing.dispatchedAt = current.dispatchedAt;
         existing.status = current.status;
+        if (current.orderId) existing.orderId = current.orderId;
       }
       return acc;
     }

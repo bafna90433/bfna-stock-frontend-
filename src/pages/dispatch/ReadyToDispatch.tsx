@@ -83,7 +83,7 @@ const ReadyToDispatch: React.FC = () => {
                   <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                     <span>👤 {order.salesmanName || '—'}</span>
                     <span>📦 {order.items?.length} items</span>
-                    <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · {new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 </div>
 
