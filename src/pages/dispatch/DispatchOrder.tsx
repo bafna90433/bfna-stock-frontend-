@@ -27,67 +27,52 @@ interface DispatchItem {
 
 // Compute per-unit dispatch quantities for an item (same logic used in both render and submit)
 const computeItemDispatch = (item: DispatchItem) => {
-  const ppi = item.pcsPerInner || 0;
-  const ppc = item.innerPerCarton || item.pcsPerCarton || 0;
-  const stockC = item.stockCartons || 0;
-  const stockI = item.stockInners  || 0;
-  const stockL = item.stockLoose   || 0;
-  
-  let pcsLeft = item.availableQty || 0;
-  
+  const ppc = item.innerPerCarton || 0;
+  const ppi = item.pcsPerInner    || 0;
   const hasCTN = (item.cartonQty || 0) > 0;
   const hasINR = (item.innerQty  || 0) > 0;
   const hasPCS = (item.looseQty  || 0) > 0;
 
-  let dispCTN = 0;
-  let dispINR = 0;
-  let dispPCS = 0;
-  let ctnBinWarning = false;
-  let inrBinWarning = false;
-  let pcsBinWarning = false;
+  const stockC = item.stockCartons ?? 0;
+  const stockI = item.stockInners  ?? 0;
+  const stockL = item.stockLoose   ?? 0;
+  const hasBreakdown = stockC > 0 || stockI > 0 || stockL > 0;
 
+  let pcsLeft = item.qtyDispatched;
+  
   // 1. CTN Dispatch
+  let dispCTN = 0;
+  let ctnBinWarning = false;
   if (hasCTN) {
-    const needed = item.cartonQty || 0;
-    // How many we CAN dispatch based on total pieces
-    const maxByPcs = ppc > 0 ? Math.floor(pcsLeft / ppc) : needed; 
-    dispCTN = Math.min(needed, stockC, maxByPcs);
-    
-    if (dispCTN < needed && stockC >= needed) {
-      // We have the cartons, but total pieces (availableQty) is limiting us.
-      // This usually means the sync is slightly off, so we trust the bin if it's there.
-      dispCTN = Math.min(needed, stockC);
+    if (ppc > 0) {
+      dispCTN = Math.min(Math.floor(pcsLeft / ppc), item.cartonQty || 0);
+      if (dispCTN > stockC && hasBreakdown) ctnBinWarning = true;
+    } else if (!hasINR && !hasPCS) {
+      dispCTN = item.cartonQty || 0;
+    } else {
+      ctnBinWarning = true; // No rate but mixed order
     }
-    
-    pcsLeft -= dispCTN * (ppc || 0);
   }
+  pcsLeft -= dispCTN * ppc;
 
   // 2. INR Dispatch
-  if (hasINR) {
-    const needed = item.innerQty || 0;
-    const maxByPcs = ppi > 0 ? Math.floor(pcsLeft / ppi) : needed;
-    dispINR = Math.min(needed, stockI, maxByPcs);
-    
-    if (dispINR < needed && stockI >= needed) {
-      dispINR = Math.min(needed, stockI);
-    }
-    
-    pcsLeft -= dispINR * (ppi || 0);
+  let dispINR = 0;
+  let inrBinWarning = false;
+  if (hasINR && ppi > 0) {
+    dispINR = Math.min(Math.floor(pcsLeft / ppi), item.innerQty || 0);
+    if (dispINR > stockI && hasBreakdown) inrBinWarning = true;
   }
+  pcsLeft -= dispINR * ppi;
 
   // 3. PCS Dispatch
+  let dispPCS = 0;
+  let pcsBinWarning = false;
   if (hasPCS) {
-    const needed = item.looseQty || 0;
-    dispPCS = Math.min(needed, stockL, pcsLeft);
-    
-    if (dispPCS < needed && stockL >= needed) {
-      dispPCS = Math.min(needed, stockL);
-    }
-    
-    pcsLeft -= dispPCS;
+    dispPCS = Math.min(pcsLeft, item.looseQty || 0);
+    if (dispPCS > stockL && hasBreakdown) pcsBinWarning = true;
   }
 
-  // Pending quantities
+  // Pending quantities (truly missing total stock)
   const pendingCTN = hasCTN ? (item.cartonQty || 0) - dispCTN : 0;
   const pendingINR = hasINR ? (item.innerQty  || 0) - dispINR : 0;
   const pendingPCS = hasPCS ? (item.looseQty  || 0) - dispPCS : 0;
@@ -158,14 +143,11 @@ const DispatchOrder: React.FC = () => {
 
           let maxDispatch = Math.min(item.availableQty, item.remainingQty);
 
-          // Round down to complete units ONLY if no loose pieces were ordered.
-          // If loose pieces are part of the order, we shouldn't round down the total piece count.
-          if ((item.looseQty || 0) === 0) {
-            if ((item.cartonQty || 0) > 0) {
-              maxDispatch = Math.floor(maxDispatch / pcsPerCarton) * pcsPerCarton;
-            } else if ((item.innerQty || 0) > 0) {
-              maxDispatch = Math.floor(maxDispatch / pcsPerInner) * pcsPerInner;
-            }
+          // Round down to complete units based on how the item was ordered
+          if ((item.cartonQty || 0) > 0) {
+            maxDispatch = Math.floor(maxDispatch / pcsPerCarton) * pcsPerCarton;
+          } else if ((item.innerQty || 0) > 0) {
+            maxDispatch = Math.floor(maxDispatch / pcsPerInner) * pcsPerInner;
           }
 
           return {
@@ -174,11 +156,7 @@ const DispatchOrder: React.FC = () => {
             qtyDispatched: maxDispatch,
           };
         }));
-      } catch (e: any) {
-        if (e?.response?.status === 404) {
-          navigate('/dispatch/orders', { replace: true });
-        }
-      }
+      } catch (e) { toast.error('Failed to load order'); }
       finally { setLoading(false); }
     };
     fetchOrder();
@@ -268,23 +246,9 @@ const DispatchOrder: React.FC = () => {
         </button>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Dispatch Order</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: 4, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>{order.orderNumber}</span>
-            <span style={{ color: 'var(--border-dark)', fontSize: '0.8rem' }}>•</span>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>{order.customerName}</span>
-            {order.customerAddress?.city && (
-              <>
-                <span style={{ color: 'var(--border-dark)', fontSize: '0.8rem' }}>•</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>📍 {order.customerAddress.city}</span>
-              </>
-            )}
-            {order.salesmanName && (
-              <>
-                <span style={{ color: 'var(--border-dark)', fontSize: '0.8rem' }}>•</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#D97706', background: 'rgba(217,119,6,0.08)', padding: '1px 8px', borderRadius: 6 }}>👤 {order.salesmanName}</span>
-              </>
-            )}
-          </div>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {order.orderNumber} &nbsp;•&nbsp; {order.customerName}
+          </p>
         </div>
       </div>
 
@@ -418,45 +382,7 @@ const DispatchOrder: React.FC = () => {
                       )}
                     </div>
                   </div>
-
-                  {/* Stock Breakdown (Side) — only show ordered unit types */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end', background: 'var(--bg2)', padding: '6px 12px', borderRadius: 10, border: '1.5px solid var(--border)', flexShrink: 0 }}>
-                    <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: 2, textAlign: 'right', width: '100%' }}>REMAINING AFTER DISPATCH</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {hasCTN && (
-                        <>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: (item.stockCartons - dispCTN) > 0 ? 'var(--primary)' : 'var(--text-dim)' }}>
-                              {item.stockCartons - dispCTN}
-                            </div>
-                            <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>CTN</div>
-                          </div>
-                          {(hasINR || hasPCS) && <div style={{ width: 1, height: 16, background: 'var(--border)' }} />}
-                        </>
-                      )}
-                      {hasINR && (
-                        <>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: (item.stockInners - dispINR) > 0 ? '#D97706' : 'var(--text-dim)' }}>
-                              {item.stockInners - dispINR}
-                            </div>
-                            <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>INR</div>
-                          </div>
-                          {hasPCS && <div style={{ width: 1, height: 16, background: 'var(--border)' }} />}
-                        </>
-                      )}
-                      {hasPCS && (
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: (item.stockLoose - dispPCS) > 0 ? '#10B981' : 'var(--text-dim)' }}>
-                            {item.stockLoose - dispPCS}
-                          </div>
-                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>PCS</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0, marginLeft: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                     {/* ORDERED — per unit, separate */}
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Ordered</div>
@@ -512,29 +438,7 @@ const DispatchOrder: React.FC = () => {
                     <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{item.productName}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
                   </div>
-
-                  {/* Stock Breakdown (Side) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-end', background: 'var(--bg2)', padding: '6px 12px', borderRadius: 10, border: '1.5px solid var(--border)', flexShrink: 0 }}>
-                    <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: 2, textAlign: 'right', width: '100%' }}>AVBL STOCK</div>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: (item.stockCartons || 0) > 0 ? 'var(--primary)' : 'var(--text-dim)' }}>{item.stockCartons || 0}</div>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--text-dim)' }}>CTN</div>
-                      </div>
-                      <div style={{ width: 1, height: 14, background: 'var(--border)' }} />
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: (item.stockInners || 0) > 0 ? '#D97706' : 'var(--text-dim)' }}>{item.stockInners || 0}</div>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--text-dim)' }}>INR</div>
-                      </div>
-                      <div style={{ width: 1, height: 14, background: 'var(--border)' }} />
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: (item.stockLoose || 0) > 0 ? '#10B981' : 'var(--text-dim)' }}>{item.stockLoose || 0}</div>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--text-dim)' }}>PCS</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0, marginLeft: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: '#F59E0B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>⏳ Pending</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
