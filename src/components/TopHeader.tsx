@@ -192,7 +192,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({ onMenuClick }) => {
           </button>
 
           {open && (
-            <div className="notif-dropdown">
+            <div className="notif-dropdown" style={{ width: 360 }}>
               <div className="notif-dropdown-header">
                 <span className="notif-dropdown-title">
                   Notifications
