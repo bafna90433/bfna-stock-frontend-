@@ -20,6 +20,7 @@ interface DashboardHeroProps {
   onRefresh?: () => void;
   refreshing?: boolean;
   stats?: Array<{ label: string; value: string | number; color?: string }>;
+  showBell?: boolean;
 }
 
 function getGreeting(): { text: string; emoji: string } {
@@ -40,7 +41,7 @@ function useLiveClock() {
 }
 
 const DashboardHero: React.FC<DashboardHeroProps> = ({
-  title, subtitle, actions = [], onRefresh, refreshing = false, stats,
+  title, subtitle, actions = [], onRefresh, refreshing = false, stats, showBell = false,
 }) => {
   const { user } = useAuthStore();
   const portal = getPortalConfig();
@@ -166,7 +167,7 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
 
         {/* RIGHT: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          {['sale_staff', 'billing', 'admin'].includes(user?.role || '') && <NotificationBell />}
+          {showBell && <NotificationBell />}
           {onRefresh && (
             <button
               onClick={onRefresh}

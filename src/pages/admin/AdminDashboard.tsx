@@ -73,6 +73,7 @@ const AdminDashboard: React.FC = () => {
           { label: 'User Management', icon: <Users size={15} />, to: '/admin/users', variant: 'secondary' },
           { label: 'Stock Management', icon: <BarChart3 size={15} />, to: '/admin/stock', variant: 'primary' },
         ]}
+        showBell
       />
 
       {/* 5 Stat Cards */}
