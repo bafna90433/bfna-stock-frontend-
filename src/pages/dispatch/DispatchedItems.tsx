@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Truck, RefreshCw, Search, CheckCircle, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Truck, RefreshCw, Search, CheckCircle, Trash2, AlertTriangle, X, Clock } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -274,13 +274,31 @@ const DispatchedItems: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                        👤 {dispatch.customerName} &nbsp;•&nbsp;
-                        📅 {new Date(dispatch.dispatchedAt || dispatch.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.6rem', padding: '0.6rem', background: 'var(--bg3)', borderRadius: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          <Clock size={11} />
+                          <span>Ordered: {dispatch.orderId?.createdAt ? new Date(dispatch.orderId.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' · ' + new Date(dispatch.orderId.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Unknown'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: '#10B981', fontWeight: 700 }}>
+                          <Truck size={12} />
+                          <span>Dispatched: {new Date(dispatch.dispatchedAt || dispatch.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · {new Date(dispatch.dispatchedAt || dispatch.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        {dispatch.orderId?.createdAt && (
+                          <div style={{ marginLeft: '1.25rem', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                            Duration: {(() => {
+                              const diff = new Date(dispatch.dispatchedAt || dispatch.createdAt).getTime() - new Date(dispatch.orderId.createdAt).getTime();
+                              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                              const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                              if (days === 0 && hours === 0) return 'less than an hour';
+                              return `${days > 0 ? `${days}d ` : ''}${hours}h`;
+                            })()}
+                          </div>
+                        )}
                         {dispatch.isVerified && (
-                          <span style={{ color: '#10B981', fontWeight: 700 }}>
-                            &nbsp;•&nbsp; Verified by {dispatch.verifiedByName} at {new Date(dispatch.verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#166534', fontWeight: 800, marginTop: '0.2rem', padding: '4px 8px', background: '#DCFCE7', borderRadius: 6 }}>
+                            <CheckCircle size={11} />
+                            <span>Verified by {dispatch.verifiedByName} at {new Date(dispatch.verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
                         )}
                       </div>
                     </div>

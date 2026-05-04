@@ -150,30 +150,42 @@ const ReadyForBill: React.FC = () => {
                 </div>
 
                 {/* Order details */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginBottom: '1.25rem', padding: '0.85rem', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    <Package size={14} />
-                    <span>{itemCount} product{itemCount !== 1 ? 's' : ''} · {totalQty} qty total</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1.25rem', padding: '0.85rem', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      <Package size={14} />
+                      <span>{itemCount} product{itemCount !== 1 ? 's' : ''} · {totalQty} qty total</span>
+                    </div>
+                    {dispatch.transportName && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        <Truck size={14} />
+                        <span>{dispatch.transportName}{dispatch.lrNumber ? ` · LR: ${dispatch.lrNumber}` : ''}</span>
+                      </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem', marginTop: '0.2rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                        <Clock size={12} />
+                        <span>Ordered: {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · {new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      {dispatch.dispatchedAt && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: '#10B981', fontWeight: 600 }}>
+                            <Truck size={14} />
+                            <span>Dispatched: {new Date(dispatch.dispatchedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · {new Date(dispatch.dispatchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <div style={{ marginLeft: '1.45rem', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                            Duration: {(() => {
+                              const diff = new Date(dispatch.dispatchedAt).getTime() - new Date(order.createdAt).getTime();
+                              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                              const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                              if (days === 0 && hours === 0) return 'less than an hour';
+                              return `${days > 0 ? `${days}d ` : ''}${hours}h`;
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {dispatch.transportName && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      <Truck size={14} />
-                      <span>{dispatch.transportName}{dispatch.lrNumber ? ` · LR: ${dispatch.lrNumber}` : ''}</span>
-                    </div>
-                  )}
-                  {dispatch.dispatchedAt && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      <Clock size={14} />
-                      <span>Dispatched: {new Date(dispatch.dispatchedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                    </div>
-                  )}
-                  {!dispatch._id && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.82rem', color: 'var(--danger)' }}>
-                      <AlertCircle size={14} />
-                      <span>No dispatch info — cannot generate bill</span>
-                    </div>
-                  )}
-                </div>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '0.6rem' }}>

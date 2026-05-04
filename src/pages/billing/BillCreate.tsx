@@ -130,11 +130,31 @@ const BillCreate: React.FC = () => {
               </span>
             </div>
             {dispatch && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Dispatched On</span>
-                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                  {new Date(dispatch.dispatchedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Order Created</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+                    {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · {new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Dispatched On</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#10B981' }}>
+                    {new Date(dispatch.dispatchedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · {new Date(dispatch.dispatchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.2rem', padding: '0.4rem 0.6rem', background: 'rgba(16,185,129,0.05)', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Processing Duration</span>
+                  <span style={{ fontWeight: 800, color: '#10B981', fontSize: '0.85rem' }}>
+                    {(() => {
+                      const diff = new Date(dispatch.dispatchedAt).getTime() - new Date(order.createdAt).getTime();
+                      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                      if (days === 0 && hours === 0) return 'less than an hour';
+                      return `${days > 0 ? `${days}d ` : ''}${hours}h`;
+                    })()}
+                  </span>
+                </div>
               </div>
             )}
           </div>
