@@ -271,14 +271,31 @@ const NotificationBell: React.FC = () => {
           0%, 100% { transform: scale(1); }
           50%       { transform: scale(1.18); }
         }
-        @keyframes unread-pulse {
-          0% { box-shadow: inset 4px 0 0 #6366F1; background: rgba(99,102,241,0.03); }
-          50% { box-shadow: inset 8px 0 0 #6366F1; background: rgba(99,102,241,0.08); }
-          100% { box-shadow: inset 4px 0 0 #6366F1; background: rgba(99,102,241,0.03); }
+        @keyframes unread-glow {
+          0% { border-color: rgba(99,102,241,0.2); box-shadow: 0 0 5px rgba(99,102,241,0.05); background: rgba(255,255,255,1); }
+          50% { border-color: rgba(99,102,241,0.6); box-shadow: 0 0 12px rgba(99,102,241,0.15); background: rgba(99,102,241,0.04); }
+          100% { border-color: rgba(99,102,241,0.2); box-shadow: 0 0 5px rgba(99,102,241,0.05); background: rgba(255,255,255,1); }
         }
         .unread-notif {
-          animation: unread-pulse 2s ease-in-out infinite;
-          border-left: 4px solid #6366F1 !important;
+          animation: unread-glow 2s ease-in-out infinite;
+          border: 1px solid rgba(99,102,241,0.5) !important;
+          margin: 4px 8px;
+          border-radius: 10px;
+          position: relative;
+          z-index: 1;
+        }
+        .unread-notif::before {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          border-radius: 10px;
+          padding: 1px;
+          background: linear-gradient(45deg, #6366F1, transparent, #6366F1);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.5;
         }
         .custom-scrollbar::-webkit-scrollbar {
           width: 5px;
