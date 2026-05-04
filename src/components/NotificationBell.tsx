@@ -30,10 +30,14 @@ const timeAgo = (iso: string) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
+const DROPDOWN_WIDTH = 340;
+
 const NotificationBell: React.FC = () => {
-  const [notifs, setNotifs]     = useState<Notif[]>([]);
-  const [open, setOpen]         = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [notifs, setNotifs]   = useState<Notif[]>([]);
+  const [open, setOpen]       = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+  const btnRef  = useRef<HTMLButtonElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
   const unread = notifs.filter(n => !n.read).length;
@@ -51,15 +55,37 @@ const NotificationBell: React.FC = () => {
     return () => clearInterval(iv);
   }, []);
 
-  // Close dropdown on outside click
+  // Reposition dropdown on open / scroll / resize
+  const calcPos = () => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setDropPos({
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right,
+    });
+  };
+
+  const toggleOpen = () => {
+    if (!open) calcPos();
+    setOpen(o => !o);
+  };
+
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (
+        dropRef.current && !dropRef.current.contains(e.target as Node) &&
+        btnRef.current  && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
-    if (open) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', () => setOpen(false), true);
+    window.addEventListener('resize', () => setOpen(false));
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', () => setOpen(false), true);
+      window.removeEventListener('resize', () => setOpen(false));
+    };
   }, [open]);
 
   const markRead = async (id: string) => {
@@ -75,16 +101,16 @@ const NotificationBell: React.FC = () => {
   };
 
   return (
-    <div ref={dropRef} style={{ position: 'relative' }}>
+    <>
       {/* Bell button */}
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={toggleOpen}
         style={{
           position: 'relative',
           background: open ? 'white' : 'rgba(255,255,255,0.7)',
           border: '1px solid var(--border)',
           borderRadius: 10,
-          padding: '0.45rem 0.6rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -94,41 +120,46 @@ const NotificationBell: React.FC = () => {
           transition: 'all 0.15s',
           width: 38,
           height: 38,
+          flexShrink: 0,
         }}
       >
         <Bell size={17} />
         {unread > 0 && (
           <span style={{
-            position: 'absolute', top: -4, right: -4,
+            position: 'absolute', top: -5, right: -5,
             background: '#EF4444', color: '#fff',
             fontSize: '0.6rem', fontWeight: 800,
             borderRadius: 20, padding: '1px 5px',
-            minWidth: 16, textAlign: 'center',
+            minWidth: 17, textAlign: 'center',
             animation: 'bell-pulse 1.4s ease-in-out infinite',
-            boxShadow: '0 0 8px rgba(239,68,68,0.7)',
+            boxShadow: '0 0 8px rgba(239,68,68,0.6)',
+            lineHeight: '14px',
           }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — rendered via fixed position, escapes overflow:hidden */}
       {open && (
-        <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 8px)',
-          right: 0,
-          zIndex: 9999,
-          width: 320,
-          maxHeight: 420,
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}>
+        <div
+          ref={dropRef}
+          style={{
+            position: 'fixed',
+            top: dropPos.top,
+            right: dropPos.right,
+            zIndex: 99999,
+            width: DROPDOWN_WIDTH,
+            maxHeight: 440,
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.22)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
           {/* Header */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -156,7 +187,10 @@ const NotificationBell: React.FC = () => {
                   <CheckCheck size={13} /> Mark all read
                 </button>
               )}
-              <button onClick={() => setOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
+              <button
+                onClick={() => setOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}
+              >
                 <X size={15} />
               </button>
             </div>
@@ -172,7 +206,7 @@ const NotificationBell: React.FC = () => {
               notifs.map(n => (
                 <div
                   key={n._id}
-                  onClick={() => { markRead(n._id); if (n.link) window.location.href = n.link; }}
+                  onClick={() => { markRead(n._id); if (n.link) { setOpen(false); window.location.href = n.link; } else markRead(n._id); }}
                   style={{
                     padding: '0.75rem 1rem',
                     borderBottom: '1px solid var(--border)',
@@ -184,7 +218,7 @@ const NotificationBell: React.FC = () => {
                     transition: 'background 0.12s',
                   }}
                 >
-                  {/* Color dot */}
+                  {/* Type dot */}
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 5,
                     background: typeColor[n.type] || '#6366F1',
@@ -214,10 +248,10 @@ const NotificationBell: React.FC = () => {
       <style>{`
         @keyframes bell-pulse {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.2); }
+          50%       { transform: scale(1.18); }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 
