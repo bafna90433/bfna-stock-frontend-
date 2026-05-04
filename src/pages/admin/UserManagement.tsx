@@ -16,6 +16,14 @@ const ROLE_COLORS: Record<string, string> = {
   admin: '#6C5CE7', sale_staff: '#FF6B6B', dispatch: '#00CEC9', billing: '#FDCB6E', stock_manager: '#A29BFE', viewer: '#74B9FF', checking: '#3B82F6',
 };
 
+const ROLE_URLS: Record<string, string> = {
+  admin:         'bafnastock.bafnadaily.com',
+  sale_staff:    'staff.bafnadaily.com',
+  dispatch:      'dispatch.bafnadaily.com',
+  billing:       'billing.bafnadaily.com',
+  stock_manager: 'stock.bafnadaily.com',
+};
+
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,12 +155,27 @@ const UserManagement: React.FC = () => {
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>{u.username}</td>
                     <td>
-                      <span className="badge" style={{
-                        background: `${ROLE_COLORS[u.role]}22`, color: ROLE_COLORS[u.role],
-                        textTransform: 'capitalize'
-                      }}>
-                        {u.role}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span className="badge" style={{
+                          background: `${ROLE_COLORS[u.role]}22`, color: ROLE_COLORS[u.role],
+                          textTransform: 'capitalize'
+                        }}>
+                          {u.role}
+                        </span>
+                        {ROLE_URLS[u.role] && (
+                          <a
+                            href={`https://${ROLE_URLS[u.role]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '0.68rem', color: 'var(--text-muted)',
+                              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3,
+                            }}
+                          >
+                            🔗 {ROLE_URLS[u.role]}
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <button
