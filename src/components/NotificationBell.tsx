@@ -81,11 +81,9 @@ const NotificationBell: React.FC = () => {
       ) setOpen(false);
     };
     document.addEventListener('mousedown', close);
-    window.addEventListener('scroll', () => setOpen(false), true);
     window.addEventListener('resize', () => setOpen(false));
     return () => {
       document.removeEventListener('mousedown', close);
-      window.removeEventListener('scroll', () => setOpen(false), true);
       window.removeEventListener('resize', () => setOpen(false));
     };
   }, [open]);
