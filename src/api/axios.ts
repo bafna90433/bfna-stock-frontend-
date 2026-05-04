@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? '/api' : 'https://bafnastock.up.railway.app/api'),
+  baseURL: import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? '/api' : 'https://bfna-stock.up.railway.app/api'),
   timeout: 30000,
 });
 
