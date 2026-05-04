@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import StockManagerSidebar from './StockManagerSidebar';
+import TopHeader from '../../components/TopHeader';
 
 const StockManagerLayout: React.FC = () => {
   const { user, token } = useAuthStore();
@@ -13,7 +14,8 @@ const StockManagerLayout: React.FC = () => {
   return (
     <div className="app-layout">
       <StockManagerSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="main-content no-header">
+      <TopHeader onMenuClick={() => setSidebarOpen(true)} />
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

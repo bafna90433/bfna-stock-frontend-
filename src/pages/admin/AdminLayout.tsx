@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import AdminSidebar from './AdminSidebar';
+import TopHeader from '../../components/TopHeader';
 
 const AdminLayout: React.FC = () => {
   const { user, token } = useAuthStore();
@@ -13,7 +14,8 @@ const AdminLayout: React.FC = () => {
   return (
     <div className="app-layout">
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="main-content no-header">
+      <TopHeader onMenuClick={() => setSidebarOpen(true)} />
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

@@ -1125,29 +1125,122 @@ tbody td { padding: 0.9rem 1.15rem; vertical-align: middle; color: var(--text); 
 }
 
 /* ===== RESPONSIVE ===== */
+
+/* Tablet (≤ 900px) */
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); z-index: 200; transition: transform var(--transition); }
-  .sidebar.open { transform: translateX(0); }
+  /* Sidebar: slide in/out */
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 200;
+    transition: transform var(--transition);
+    box-shadow: none;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 8px 0 48px rgba(0,0,0,0.35);
+  }
+
+  /* Main content */
   .main-content { margin-left: 0; }
-  .top-header { left: 0; padding: 0 1.25rem; }
+  .top-header { left: 0; padding: 0 1rem; }
   .hamburger-btn { display: flex; }
-  .page-container { padding: 1.5rem 1.15rem; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Page container */
+  .page-container { padding: 1.25rem 1rem; }
+
+  /* Stats grid → 2 columns */
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
+
+  /* Typography */
   h1 { font-size: 1.5rem; }
-  .page-title { font-size: 1.4rem; }
+  h2 { font-size: 1.25rem; }
+  .page-title { font-size: 1.35rem; }
   .header-user-info { display: none; }
-}
-@media (max-width: 900px) {
-  div[style*="gridTemplateColumns"][style*="300px"] {
+
+  /* Touch-friendly buttons */
+  .btn { min-height: 40px; }
+  .btn-lg { min-height: 48px; padding: 0.85rem 1.4rem; font-size: 0.9rem; }
+
+  /* Notification dropdown — full width on mobile */
+  .notif-dropdown { width: calc(100vw - 2rem); right: -0.5rem; max-height: 75vh; }
+  .notif-list { max-height: calc(75vh - 80px); }
+
+  /* Modal — wider on mobile */
+  .modal { max-width: calc(100vw - 2rem); padding: 1.25rem; margin: 0 1rem; }
+  .modal-lg { max-width: calc(100vw - 2rem); }
+
+  /* Inline style grid overrides (pages with style="gridTemplateColumns: X Y") */
+  div[style*="grid-template-columns"],
+  div[style*="gridTemplateColumns"] {
     grid-template-columns: 1fr !important;
   }
+
+  /* Page header — stack on mobile */
+  .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+
+  /* Table: let it scroll */
+  .table-wrapper { -webkit-overflow-scrolling: touch; }
+
+  /* Form grid */
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid-3 { grid-template-columns: 1fr; }
+
+  /* Card padding */
+  .card { padding: 1.1rem; }
 }
-@media (max-width: 480px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .item-row { grid-template-columns: 44px 1fr auto; }
+
+/* Phone (≤ 600px) */
+@media (max-width: 600px) {
+  /* Stats: still 2 cols for readability */
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.6rem !important; }
+  .stat-card { padding: 1rem 1.1rem; }
+  .stat-value { font-size: 1.6rem; }
+
+  /* Page container */
+  .page-container { padding: 1rem 0.85rem; }
+
+  /* Typography */
+  h1 { font-size: 1.35rem; }
+  .page-title { font-size: 1.2rem; }
+
+  /* Buttons */
+  .btn-lg { font-size: 0.85rem; padding: 0.75rem 1.2rem; min-height: 46px; }
+
+  /* Item rows */
+  .item-row { grid-template-columns: 44px 1fr auto; gap: 0.5rem; }
+
+  /* Invoice */
   .invoice-header { flex-direction: column; }
   .invoice-meta { grid-template-columns: 1fr; }
   .invoice-meta-cell:first-child { border-right: none; border-bottom: 1px solid var(--border-soft); }
+  .invoice-body { padding: 1rem; }
+  .invoice-meta-cell { padding: 1rem; }
+
+  /* Modal full bottom sheet on very small */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 90vh;
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* iOS safe area */
+  .page-container { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+}
+
+/* Small phone (≤ 400px) */
+@media (max-width: 400px) {
+  .page-container { padding: 0.85rem 0.7rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; }
+  .stat-card { padding: 0.9rem; }
+  .stat-value { font-size: 1.4rem; }
+  .stat-icon { width: 36px; height: 36px; font-size: 1rem; margin-bottom: 0.65rem; }
+  h1 { font-size: 1.2rem; }
+  .page-title { font-size: 1.1rem; }
+  .btn { font-size: 0.825rem; }
+  .btn-lg { font-size: 0.825rem; min-height: 44px; }
 }
 
 /* ===== PRINT ===== */
