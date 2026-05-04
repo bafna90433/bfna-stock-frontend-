@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Tags, TrendingUp, Package, LogOut, Truck, FileText, ClipboardCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import NotificationBell from '../../components/NotificationBell';
 
 interface AdminSidebarProps { open?: boolean; onClose?: () => void; }
 
@@ -65,6 +66,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ open, onClose }) => {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notifications</span>
+            <NotificationBell />
+          </div>
           <div className="user-card">
             <div className="user-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
             <div className="user-info">
