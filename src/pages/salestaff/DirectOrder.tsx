@@ -344,7 +344,7 @@ const DirectOrder: React.FC = () => {
         pricePerUnit: price,
         isBulkPriced: isBulk,
         bulkPricingTiers: tiers,
-        gstRate: applyGst ? (Number(p.gstRate) || defaultGst) : 0,
+        gstRate: applyGst ? defaultGst : 0,
         availableQty: p.stock?.availableQty || 0,
         stockCartons: p.stock?.stockCartons ?? 0,
         stockInners: p.stock?.stockInners ?? 0,
