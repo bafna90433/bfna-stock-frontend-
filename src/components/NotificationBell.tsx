@@ -227,7 +227,15 @@ const NotificationBell: React.FC = () => {
                 <div
                   key={n._id}
                   className={n.read ? '' : 'unread-notif'}
-                  onClick={() => { markRead(n._id); setOpen(false); if (n.link) navigate(n.link); }}
+                  onClick={() => { 
+                    markRead(n._id); 
+                    setOpen(false); 
+                    if (n.title?.toLowerCase().includes('stock') || n.message?.toLowerCase().includes('stock')) {
+                      navigate('/dispatch/stock?filter=out');
+                    } else if (n.link) {
+                      navigate(n.link); 
+                    }
+                  }}
                   style={{
                     padding: '0.75rem 1rem',
                     borderBottom: '1px solid var(--border)',

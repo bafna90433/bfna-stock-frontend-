@@ -7,27 +7,24 @@ import toast from 'react-hot-toast';
 
 // calcTotalPcs: (carton * innerPerCarton) + (inner * pcsPerInner) + loose
 // 1 CTN = innerPerCarton pcs, 1 INR = pcsPerInner pcs (independent multipliers)
-const formatQty = (pcs: number, item: any): string => {
-  const pcsPerInner = item.pcsPerInner || 1;
-  const pcsPerCarton = item.innerPerCarton || 1;
-
-  if (item.cartonQty > 0) {
-    const ctns = Math.floor(pcs / pcsPerCarton);
-    const rem = pcs % pcsPerCarton;
-    const parts: string[] = [];
-    if (ctns > 0) parts.push(`${ctns} CTN`);
-    if (rem > 0) parts.push(`${rem} PCS`);
-    return parts.join(' + ') || '0';
-  } else if (item.innerQty > 0) {
-    const inners = Math.floor(pcs / pcsPerInner);
-    const loose = pcs % pcsPerInner;
-    const parts: string[] = [];
-    if (inners > 0) parts.push(`${inners} INR`);
-    if (loose > 0) parts.push(`${loose} PCS`);
-    return parts.join(' + ') || '0';
-  } else {
-    return `${pcs} PCS`;
-  }
+const formatRemainingQty = (item: any): string => {
+  const parts: string[] = [];
+  const remCTN = (item.cartonQty || 0) - (item.dispatchedCartons || 0);
+  const remINR = (item.innerQty || 0) - (item.dispatchedInners || 0);
+  const remPCS = (item.looseQty || 0) - (item.dispatchedLoose || 0);
+  
+  if (remCTN > 0) parts.push(`${remCTN} CTN`);
+  if (remINR > 0) parts.push(`${remINR} INR`);
+  if (remPCS > 0) parts.push(`${remPCS} PCS`);
+  
+  return parts.join(' + ') || '0';
+};
+const formatQty = (item: any): string => {
+  const parts: string[] = [];
+  if ((item.dispatchedCartons || 0) > 0) parts.push(`${item.dispatchedCartons} CTN`);
+  if ((item.dispatchedInners || 0) > 0)  parts.push(`${item.dispatchedInners} INR`);
+  if ((item.dispatchedLoose || 0) > 0)   parts.push(`${item.dispatchedLoose} PCS`);
+  return parts.join(' + ') || '0';
 };
 
 const formatOrderedQty = (item: any): string => {
@@ -345,7 +342,7 @@ const PendingOrders: React.FC = () => {
                             }}>
                               {item.imageUrl && <img src={item.imageUrl} style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }} alt="" />}
                               <span style={{ fontWeight: 600 }}>{item.productName}</span>
-                              <span style={{ color: '#10B981', fontWeight: 800 }}>×{formatQty(item.qtyDispatched, item)}</span>
+                              <span style={{ color: '#10B981', fontWeight: 800 }}>×{formatQty(item)}</span>
                             </div>
                           ))}
                         </div>
@@ -360,7 +357,7 @@ const PendingOrders: React.FC = () => {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                           {pendingItems.map((item: any, idx: number) => {
                             const remainingPcs = isPartial ? item.qtyOrdered - (item.qtyDispatched || 0) : item.qtyOrdered;
-                            const qtyLabel = isPartial ? formatQty(remainingPcs, item) : formatOrderedQty(item);
+                            const qtyLabel = isPartial ? formatRemainingQty(item) : formatOrderedQty(item);
                             return (
                               <div key={idx} style={{
                                 display: 'flex', alignItems: 'center', gap: '0.35rem',

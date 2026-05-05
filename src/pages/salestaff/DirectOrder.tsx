@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ShoppingCart, Search, Plus, Trash2, CheckCircle, Loader, ArrowLeft, Upload, X, Image as ImageIcon, FileText } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Trash2, CheckCircle, Loader, ArrowLeft, Upload, X, Image as ImageIcon, FileText, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
@@ -77,6 +77,43 @@ const DirectOrder: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const stockRefreshedRef = useRef(false);
+  const [refreshingStock, setRefreshingStock] = useState(false);
+
+  const refreshStock = async () => {
+    if (items.length === 0) {
+      toast.error('No items to refresh');
+      return;
+    }
+    setRefreshingStock(true);
+    const toastId = toast.loading('Refreshing stock...');
+    try {
+      const updatedItems = await Promise.all(
+        items.map(async (item) => {
+          try {
+            const { data: p } = await api.get(`/products/${item.productId}`);
+            // If editing, we need to add back the current ordered qty to show available correctly
+            // (Similar to line 136 in the edit mode loader)
+            const baseAvail = p.stock?.availableQty ?? 0;
+            const finalAvail = isEdit ? baseAvail + (item.qtyOrdered || 0) : baseAvail;
+
+            return {
+              ...item,
+              availableQty:  finalAvail,
+              stockCartons:  p.stock?.stockCartons ?? 0,
+              stockInners:   p.stock?.stockInners  ?? 0,
+              stockLoose:    p.stock?.stockLoose   ?? 0,
+            };
+          } catch { return item; }
+        })
+      );
+      setItems(updatedItems);
+      toast.success('Stock updated!', { id: toastId });
+    } catch (err) {
+      toast.error('Failed to refresh stock', { id: toastId });
+    } finally {
+      setRefreshingStock(false);
+    }
+  };
 
   const fetchRecentOrders = async () => {
     setLoadingOrders(true);
@@ -110,6 +147,46 @@ const DirectOrder: React.FC = () => {
   );
 
   useEffect(() => { searchProducts(searchQuery); }, [searchQuery]);
+
+  // AUTO-REFRESH STOCK: Every 30 seconds if items exist
+  useEffect(() => {
+    if (items.length === 0) return;
+    const interval = setInterval(() => {
+      // Background refresh (silent, no loading toast)
+      (async () => {
+        try {
+          const updatedItems = await Promise.all(
+            items.map(async (item) => {
+              try {
+                const { data: p } = await api.get(`/products/${item.productId}`);
+                const baseAvail = p.stock?.availableQty ?? 0;
+                const finalAvail = isEdit ? baseAvail + (item.qtyOrdered || 0) : baseAvail;
+                return {
+                  ...item,
+                  availableQty:  finalAvail,
+                  stockCartons:  p.stock?.stockCartons ?? 0,
+                  stockInners:   p.stock?.stockInners  ?? 0,
+                  stockLoose:    p.stock?.stockLoose   ?? 0,
+                };
+              } catch { return item; }
+            })
+          );
+          setItems(updatedItems);
+        } catch { }
+      })();
+    }, 30000);
+
+    // Also refresh when window regains focus
+    const handleFocus = () => {
+      if (items.length > 0) refreshStock();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [items.length, isEdit]); // Only re-run if item count changes
 
   // Load existing order if in edit mode
   useEffect(() => {
@@ -435,7 +512,25 @@ const DirectOrder: React.FC = () => {
         {/* RIGHT: Order Items */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 600, position: 'sticky', top: '1rem' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 className="card-title"><ShoppingCart size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />Order Items ({items.length})</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h3 className="card-title" style={{ margin: 0 }}><ShoppingCart size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />Order Items ({items.length})</h3>
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={refreshStock}
+                  disabled={refreshingStock}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)',
+                    background: 'var(--bg2)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                    color: 'var(--primary)'
+                  }}
+                >
+                  <RefreshCw size={12} className={refreshingStock ? 'spin' : ''} />
+                  {refreshingStock ? 'Updating...' : 'Refresh Stock'}
+                </button>
+              )}
+            </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.825rem', cursor: 'pointer', color: 'var(--text-muted)', fontWeight: 600 }}>
               <input type="checkbox" checked={applyGst} onChange={e => toggleGst(e.target.checked)} style={{ width: 16, height: 16 }} />
               Apply GST

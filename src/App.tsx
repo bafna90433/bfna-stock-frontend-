@@ -39,6 +39,7 @@ import DispatchHistory from './pages/dispatch/DispatchHistory';
 import HoldOrders from './pages/dispatch/HoldOrders';
 import ReadyToDispatch from './pages/dispatch/ReadyToDispatch';
 import DispatchedItems from './pages/dispatch/DispatchedItems';
+import DispatchStock from './pages/dispatch/DispatchStock';
 
 // Checking Portal
 import CheckingLayout from './pages/checking/CheckingLayout';
@@ -135,6 +136,7 @@ function App() {
           <Route path="ready" element={<ReadyToDispatch />} />
           <Route path="dispatched" element={<DispatchedItems />} />
           <Route path="history" element={<DispatchHistory />} />
+          <Route path="stock" element={<DispatchStock />} />
         </Route>
 
         {/* Billing Portal */}

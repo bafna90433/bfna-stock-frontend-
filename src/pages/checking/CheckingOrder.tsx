@@ -26,9 +26,12 @@ const CheckingOrder: React.FC = () => {
           dispatchedQty: item.qtyDispatched,
           pcsPerInner: item.pcsPerInner || 1,
           innerPerCarton: item.innerPerCarton || 1,
+          dispatchedCartons: item.cartonQty || 0,
+          dispatchedInners: item.innerQty || 0,
+          dispatchedLoose: item.looseQty || 0,
+          checkedQtyCarton: 0,
           checkedQtyInner: 0,
           checkedQtyPcs: 0,
-          totalCheckedPcs: 0,
           isFull: false
         })));
       } catch {
@@ -45,18 +48,21 @@ const CheckingOrder: React.FC = () => {
     const newItems = [...checkedItems];
     const item = { ...newItems[index] };
     
-    if (field === 'inner') item.checkedQtyInner = value;
-    if (field === 'pcs') item.checkedQtyPcs = value;
+    if (field === 'carton') item.checkedQtyCarton = value;
+    if (field === 'inner')  item.checkedQtyInner = value;
+    if (field === 'pcs')    item.checkedQtyPcs = value;
     
-    item.totalCheckedPcs = (item.checkedQtyInner * item.pcsPerInner) + item.checkedQtyPcs;
-    item.isFull = item.totalCheckedPcs >= item.dispatchedQty;
+    item.isFull = 
+      item.checkedQtyCarton >= item.dispatchedCartons &&
+      item.checkedQtyInner  >= item.dispatchedInners &&
+      item.checkedQtyPcs    >= item.dispatchedLoose;
     
     newItems[index] = item;
     setCheckedItems(newItems);
   };
 
   const handleSubmit = async () => {
-    const incomplete = checkedItems.some(i => i.totalCheckedPcs < i.dispatchedQty);
+    const incomplete = checkedItems.some(i => !i.isFull);
     if (incomplete && !window.confirm('Some items are not fully checked. Save anyway?')) return;
 
     setSaving(true);
@@ -107,36 +113,58 @@ const CheckingOrder: React.FC = () => {
             <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{item.productName}</div>
             <div style={{ fontSize: '0.72rem', color: '#64748B', marginBottom: '0.85rem' }}>SKU: {item.sku}</div>
 
-            <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <div>
-                <div style={{ fontSize: '0.65rem', color: '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Must Check</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E293B' }}>{item.dispatchedQty} <span style={{ fontSize: '0.8rem' }}>PCS</span></div>
+            <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, borderBottom: '1px solid #E2E8F0', paddingBottom: 6 }}>
+                <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>TYPE</span>
+                <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>MUST CHECK</span>
+                <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 800 }}>CHECKED</span>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.65rem', color: item.isFull ? '#10B981' : '#64748B', textTransform: 'uppercase', fontWeight: 700 }}>Checked</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: item.isFull ? '#10B981' : '#3B82F6' }}>{item.totalCheckedPcs} <span style={{ fontSize: '0.8rem' }}>PCS</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>Cartons</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{item.dispatchedCartons}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: item.checkedQtyCarton >= item.dispatchedCartons ? '#10B981' : '#3B82F6' }}>{item.checkedQtyCarton}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>Inners</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{item.dispatchedInners}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: item.checkedQtyInner >= item.dispatchedInners ? '#10B981' : '#3B82F6' }}>{item.checkedQtyInner}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>Loose Pcs</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{item.dispatchedLoose}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: item.checkedQtyPcs >= item.dispatchedLoose ? '#10B981' : '#3B82F6' }}>{item.checkedQtyPcs}</span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
               <div>
-                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', marginBottom: 4, display: 'block' }}>INNERS (x{item.pcsPerInner})</label>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', marginBottom: 4, display: 'block' }}>CARTONS</label>
+                <input 
+                  type="number" 
+                  value={item.checkedQtyCarton || ''}
+                  onChange={(e) => updateChecked(idx, 'carton', parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700, fontSize: '0.85rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', marginBottom: 4, display: 'block' }}>INNERS</label>
                 <input 
                   type="number" 
                   value={item.checkedQtyInner || ''}
                   onChange={(e) => updateChecked(idx, 'inner', parseInt(e.target.value) || 0)}
                   placeholder="0"
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700 }}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700, fontSize: '0.85rem' }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', marginBottom: 4, display: 'block' }}>LOOSE PCS</label>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', marginBottom: 4, display: 'block' }}>LOOSE PCS</label>
                 <input 
                   type="number" 
                   value={item.checkedQtyPcs || ''}
                   onChange={(e) => updateChecked(idx, 'pcs', parseInt(e.target.value) || 0)}
                   placeholder="0"
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700 }}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700, fontSize: '0.85rem' }}
                 />
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Truck, LayoutDashboard, LogOut, CheckCircle, Clock, Zap, PackageCheck, ArrowLeft } from 'lucide-react';
+import { Truck, LayoutDashboard, LogOut, CheckCircle, Clock, Zap, PackageCheck, ArrowLeft, Package } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -41,13 +41,9 @@ const DispatchSidebar: React.FC<DispatchSidebarProps> = ({ open, onClose }) => {
       color: '#EF4444', // Red
       badge: unseenCount > 0 ? unseenCount : null
     },
-    { 
-      to: '/dispatch/dispatched', 
-      icon: <PackageCheck size={17} />,    
-      label: 'Dispatched Items',
-      color: '#10B981' // Green
-    },
-    { to: '/dispatch/history',    icon: <CheckCircle size={17} />,     label: 'Dispatch History' },
+    { to: '/dispatch/dispatched', icon: <PackageCheck size={17} />, label: 'Dispatched Items', color: '#10B981' },
+    { to: '/dispatch/history',    icon: <CheckCircle size={17} />,   label: 'Dispatch History' },
+    { to: '/dispatch/stock',      icon: <Package size={17} />,       label: 'Inventory Stock' },
   ];
 
   return (
