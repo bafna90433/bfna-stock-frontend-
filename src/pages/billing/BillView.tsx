@@ -13,6 +13,8 @@ const BillView: React.FC = () => {
   const [bill, setBill] = useState<any>(null);
   const [customerAddress, setCustomerAddress] = useState<any>(null);
   const [orderExtra, setOrderExtra] = useState<any>(null);
+  const [dispatchItems, setDispatchItems] = useState<any[]>([]);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
   const [paperImageUrl, setPaperImageUrl] = useState<string | null>(null);
   const [imageZoomed, setImageZoomed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,8 @@ const BillView: React.FC = () => {
           const dispatch = dispatchRes.status === 'fulfilled' ? dispatchRes.value.data : null;
 
           if (order?.customerAddress) setCustomerAddress(order.customerAddress);
+          if (order?.items?.length) setOrderItems(order.items);
+          if (dispatch?.items?.length) setDispatchItems(dispatch.items);
           setOrderExtra({
             salesmanName: order?.salesmanName || null,
             customerType: order?.customerType || null,
@@ -272,8 +276,8 @@ const BillView: React.FC = () => {
                   <th style={{ width: 36 }}>#</th>
                   <th>Product</th>
                   <th>SKU</th>
-                  <th>Unit</th>
-                  <th style={{ textAlign: 'center' }}>Qty</th>
+                  <th>Packaging</th>
+                  <th style={{ textAlign: 'center' }}>Qty (Pcs)</th>
                   <th style={{ textAlign: 'right' }}>Rate (₹)</th>
                   <th style={{ textAlign: 'center' }}>GST %</th>
                   <th style={{ textAlign: 'right' }}>GST (₹)</th>
@@ -281,19 +285,46 @@ const BillView: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {bill.items.map((item: any, i: number) => (
-                  <tr key={i}>
-                    <td style={{ color: 'var(--text-dim)', fontWeight: 500 }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{item.productName}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{item.sku}</td>
-                    <td style={{ textTransform: 'capitalize', color: 'var(--text-muted)' }}>{item.unit}</td>
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{item.qty}</td>
-                    <td style={{ textAlign: 'right' }}>₹{item.pricePerUnit.toFixed(2)}</td>
-                    <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{item.gstRate}%</td>
-                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{item.gstAmount.toFixed(2)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>₹{item.totalAmount.toFixed(2)}</td>
-                  </tr>
-                ))}
+                {bill.items.map((item: any, i: number) => {
+                  // Priority: bill item fields → dispatch item → order item
+                  const di = dispatchItems.find((d: any) => d.sku === item.sku || d.productName === item.productName);
+                  const oi = orderItems.find((o: any) => o.sku === item.sku || o.productName === item.productName);
+                  const ctn = item.cartonQty > 0 ? item.cartonQty : (di?.cartonQty || oi?.cartonQty || 0);
+                  const inr = item.innerQty > 0 ? item.innerQty : (di?.innerQty || oi?.innerQty || 0);
+                  const pcs = item.looseQty > 0 ? item.looseQty : (di?.looseQty || oi?.looseQty || 0);
+                  const parts: string[] = [];
+                  if (ctn > 0) parts.push(`${ctn} CTN`);
+                  if (inr > 0) parts.push(`${inr} INR`);
+                  if (pcs > 0) parts.push(`${pcs} PCS`);
+                  const packagingLabel = parts.length > 0 ? parts.join(' + ') : (item.unit || 'Pcs');
+                  return (
+                    <tr key={i}>
+                      <td style={{ color: 'var(--text-dim)', fontWeight: 500 }}>{i + 1}</td>
+                      <td style={{ fontWeight: 600 }}>{item.productName}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{item.sku}</td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: 'var(--primary-light)',
+                          background: 'rgba(99,102,241,0.08)',
+                          border: '1px solid rgba(99,102,241,0.2)',
+                          borderRadius: 6,
+                          padding: '2px 8px',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {packagingLabel}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{item.qty}</td>
+                      <td style={{ textAlign: 'right' }}>₹{item.pricePerUnit.toFixed(2)}</td>
+                      <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{item.gstRate}%</td>
+                      <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{item.gstAmount.toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>₹{item.totalAmount.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
