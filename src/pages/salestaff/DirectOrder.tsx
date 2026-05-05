@@ -55,24 +55,20 @@ const DirectOrder: React.FC = () => {
 
   const SALESMAN_OPTIONS = ['OMKAR', 'PARAS', 'MD', 'WHATSAPP'];
 
-  const [customerName, setCustomerName] = useState(() => localStorage.getItem('do_customerName') || '');
-  const [customerAddress, setCustomerAddress] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('do_customerAddress') || '{}'); } catch { return {}; }
-  });
-  const [customerType, setCustomerType] = useState<'wholesaler' | 'retailer'>(() => (localStorage.getItem('do_customerType') as any) || 'retailer');
-  const [salesmanSelect, setSalesmanSelect] = useState(() => localStorage.getItem('do_salesmanSelect') || '');
-  const [salesmanOther, setSalesmanOther] = useState(() => localStorage.getItem('do_salesmanOther') || '');
-  const [transportName, setTransportName] = useState(() => localStorage.getItem('do_transportName') || '');
-  const [notes, setNotes] = useState(() => localStorage.getItem('do_notes') || '');
+  const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState<any>({});
+  const [customerType, setCustomerType] = useState<'wholesaler' | 'retailer'>('retailer');
+  const [salesmanSelect, setSalesmanSelect] = useState('');
+  const [salesmanOther, setSalesmanOther] = useState('');
+  const [transportName, setTransportName] = useState('');
+  const [notes, setNotes] = useState('');
 
   // Resolve final salesman name based on dropdown + other input
   const salesmanName = salesmanSelect === 'other' ? salesmanOther : salesmanSelect;
   const [applyGst, setApplyGst] = useState(false);
   const [defaultGst, setDefaultGst] = useState(18);
 
-  const [items, setItems] = useState<OrderItem[]>(() => {
-    try { const s = localStorage.getItem('do_items'); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  const [items, setItems] = useState<OrderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [searching, setSearching] = useState(false);
@@ -93,33 +89,7 @@ const DirectOrder: React.FC = () => {
 
   useEffect(() => { fetchRecentOrders(); }, []);
 
-  // Refresh stock breakdown for items loaded from localStorage (stale cache fix)
-  useEffect(() => {
-    if (isEdit || stockRefreshedRef.current) return;
-    stockRefreshedRef.current = true;
-    const cached = items;
-    if (cached.length === 0) return;
-    (async () => {
-      const refreshed = await Promise.all(
-        cached.map(async (item) => {
-          try {
-            const { data: p } = await api.get(`/products/${item.productId}`);
-            return {
-              ...item,
-              // Refresh packaging — fix stale || 1 values from old localStorage
-              pcsPerInner:   isNaN(Number(p.pcsPerInner))    ? 0 : Number(p.pcsPerInner),
-              innerPerCarton: isNaN(Number(p.innerPerCarton)) ? 0 : Number(p.innerPerCarton),
-              availableQty:  p.stock?.availableQty ?? item.availableQty,
-              stockCartons:  p.stock?.stockCartons  ?? item.stockCartons,
-              stockInners:   p.stock?.stockInners   ?? item.stockInners,
-              stockLoose:    p.stock?.stockLoose    ?? item.stockLoose,
-            };
-          } catch { return item; }
-        })
-      );
-      setItems(refreshed);
-    })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Order image
   const [orderImage, setOrderImage] = useState<File | null>(null);
@@ -201,15 +171,6 @@ const DirectOrder: React.FC = () => {
     }
   }, [id, isEdit, navigate]);
 
-  // ── Persist to localStorage (only if NOT editing) ──
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_items', JSON.stringify(items)); }, [items, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_customerName', customerName); }, [customerName, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_customerAddress', JSON.stringify(customerAddress)); }, [customerAddress, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_customerType', customerType); }, [customerType, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_salesmanSelect', salesmanSelect); }, [salesmanSelect, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_salesmanOther', salesmanOther); }, [salesmanOther, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_transportName', transportName); }, [transportName, isEdit]);
-  useEffect(() => { if (!isEdit) localStorage.setItem('do_notes', notes); }, [notes, isEdit]);
 
   // Pick base price based on customer type
   const pickPrice = (p: Product): number => {
@@ -390,8 +351,6 @@ const DirectOrder: React.FC = () => {
         });
         toast.success(`Order ${orderData.orderNumber} created!`);
         navigate(`/sale-staff/invoice/${orderData._id}`);
-        // Clear draft from localStorage
-        ['do_items', 'do_customerName', 'do_customerAddress', 'do_customerType', 'do_salesmanSelect', 'do_salesmanOther', 'do_transportName', 'do_notes'].forEach(k => localStorage.removeItem(k));
       }
 
       // Clear form states

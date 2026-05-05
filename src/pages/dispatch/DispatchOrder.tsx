@@ -101,20 +101,27 @@ const formatOrderLabel = (item: DispatchItem): string => {
 const formatPcsLabel = (pcs: number, item: DispatchItem): string => {
   const ppi = item.pcsPerInner  || 0;
   const ppc = item.innerPerCarton || 0;
-  if (ppc > 0 && (item.cartonQty || 0) > 0) {
+  if (ppc > 0) {
     const ctns = Math.floor(pcs / ppc);
     const rem  = pcs % ppc;
     const parts: string[] = [];
     if (ctns > 0) parts.push(`${ctns} CTN`);
-    if (rem  > 0) parts.push(`${rem} PCS`);
-    return parts.join(' + ') || '0';
-  } else if (ppi > 0 && (item.innerQty || 0) > 0) {
+    if (rem > 0 && ppi > 0) {
+      const inners = Math.floor(rem / ppi);
+      const loose  = rem % ppi;
+      if (inners > 0) parts.push(`${inners} INR`);
+      if (loose > 0) parts.push(`${loose} PCS`);
+    } else if (rem > 0) {
+      parts.push(`${rem} PCS`);
+    }
+    return parts.join(' + ') || '0 PCS';
+  } else if (ppi > 0) {
     const inners = Math.floor(pcs / ppi);
     const loose  = pcs % ppi;
     const parts: string[] = [];
     if (inners > 0) parts.push(`${inners} INR`);
     if (loose  > 0) parts.push(`${loose} PCS`);
-    return parts.join(' + ') || '0';
+    return parts.join(' + ') || '0 PCS';
   }
   return `${pcs} PCS`;
 };
@@ -213,8 +220,8 @@ const DispatchOrder: React.FC = () => {
   if (loading) return <div className="loading-page"><div className="spinner" /><p>Loading order...</p></div>;
   if (!order) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-title">Order not found</div></div>;
 
-  const readyCount   = items.filter(i => i.stockStatus === 'available').length;
-  const partialCount = items.filter(i => i.stockStatus === 'partial').length;
+  const readyCount   = items.filter(i => i.stockStatus === 'available' && !computeItemDispatch(i).hasAnyPending).length;
+  const partialCount = items.filter(i => i.stockStatus === 'partial' || (i.stockStatus === 'available' && computeItemDispatch(i).hasAnyPending)).length;
   const noStockCount = items.filter(i => i.stockStatus === 'no_stock').length;
   const allReady     = noStockCount === 0 && partialCount === 0;
   const nothingReady = readyCount === 0 && partialCount === 0;
@@ -368,9 +375,9 @@ const DispatchOrder: React.FC = () => {
                     <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.productName}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>SKU: {item.sku}</div>
                     <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      {anyBinWarning ? (
+                      {hasAnyPending ? (
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', padding: '2px 10px', borderRadius: 99 }}>
-                          ⚠ Units need to be {ctnBinWarning ? 'Packed' : inrBinWarning ? 'Packed' : 'Broken'}
+                          ⚠️ Partial Stock Available
                         </span>
                       ) : (
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(16,185,129,0.12)', color: '#10B981', padding: '2px 10px', borderRadius: 99 }}>✅ Stock Available</span>
@@ -381,10 +388,12 @@ const DispatchOrder: React.FC = () => {
                     {/* ORDERED — per unit, separate */}
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Ordered</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {hasCTN && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.cartonQty} CTN</div>}
-                        {hasINR && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.innerQty} INR</div>}
-                        {hasPCS && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.looseQty} PCS</div>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
+                          {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                            <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <div style={{ width: 1, height: 60, background: 'var(--border)' }} />
@@ -392,42 +401,20 @@ const DispatchOrder: React.FC = () => {
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Will Dispatch</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {hasCTN && (ctnBinWarning
-                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Pack from Loose ({dispCTN})</div>
-                          : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispCTN} CTN</div>
-                        )}
-                        {hasINR && (inrBinWarning
-                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Pack from Loose ({dispINR})</div>
-                          : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispINR} INR</div>
-                        )}
-                        {hasPCS && (pcsBinWarning
-                          ? <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#F59E0B' }}>⚠ Break from Inner ({dispPCS})</div>
-                          : <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispPCS} PCS</div>
-                        )}
+                        {hasCTN && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispCTN} CTN</div>}
+                        {hasINR && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispINR} INR</div>}
+                        {hasPCS && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: '#10B981' }}>{dispPCS} PCS</div>}
                       </div>
                     </div>
                     <div style={{ width: 1, height: 60, background: 'var(--border)' }} />
                     {/* REMAINING AFTER DISPATCH — all 3 bins shown */}
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Remaining</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: ((item.stockCartons ?? 0) - dispCTN) > 0 ? 'var(--primary)' : 'var(--text-dim)' }}>
-                            {(item.stockCartons ?? 0) - dispCTN}
-                          </div>
-                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>CTN</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: ((item.stockInners ?? 0) - dispINR) > 0 ? '#D97706' : 'var(--text-dim)' }}>
-                            {(item.stockInners ?? 0) - dispINR}
-                          </div>
-                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>INR</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: ((item.stockLoose ?? 0) - dispPCS) > 0 ? '#10B981' : 'var(--text-dim)' }}>
-                            {(item.stockLoose ?? 0) - dispPCS}
-                          </div>
-                          <div style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-dim)' }}>PCS</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: (item.availableQty - item.qtyDispatched) > 0 ? 'var(--primary)' : 'var(--text-dim)' }}>
+                          {formatPcsLabel(item.availableQty - item.qtyDispatched, item).split(' + ').map((part, idx) => (
+                            <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -439,8 +426,8 @@ const DispatchOrder: React.FC = () => {
         </div>
       )}
 
-      {/* Units that will remain pending (no stock) — shown in partial/send-now mode */}
-      {!isHoldMode && !nothingReady && pendingItems.length > 0 && (
+      {/* Units that will remain pending (no stock) — hidden in partial/send-now mode as per user request */}
+      {false && !isHoldMode && !nothingReady && pendingItems.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Clock size={16} /> Unit Stock Missing — Will Remain Pending
@@ -501,12 +488,20 @@ const DispatchOrder: React.FC = () => {
                 <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Ordered</div>
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{formatOrderLabel(item)}</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
+                      {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                        <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>To be Pending</div>
-                    <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>{formatOrderLabel(item)}</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>
+                      {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                        <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -516,13 +511,13 @@ const DispatchOrder: React.FC = () => {
       )}
 
       {/* WAIT/HOLD mode: combined section — ALL items that will be held (no-stock + partial) */}
-      {isHoldMode && items.filter(i => i.qtyOrdered > i.qtyDispatched).length > 0 && (
+      {isHoldMode && items.filter(i => i.qtyOrdered > i.qtyDispatched || computeItemDispatch(i).hasAnyPending).length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertCircle size={16} /> Items remaining — will be held ({items.filter(i => i.qtyOrdered > i.qtyDispatched).length})
+            <AlertCircle size={16} /> Items remaining — will be held ({items.filter(i => i.qtyOrdered > i.qtyDispatched || computeItemDispatch(i).hasAnyPending).length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {items.filter(i => i.qtyOrdered > i.qtyDispatched).map(item => {
+            {items.filter(i => i.qtyOrdered > i.qtyDispatched || computeItemDispatch(i).hasAnyPending).map(item => {
               const noStock = item.qtyDispatched === 0;
               const borderColor = noStock ? '#EF4444' : '#F59E0B';
               const bgColor = noStock ? 'rgba(239,68,68,0.04)' : 'rgba(245,158,11,0.04)';
@@ -551,19 +546,23 @@ const DispatchOrder: React.FC = () => {
                   <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexShrink: 0 }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Ordered</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {(item.cartonQty || 0) > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.cartonQty} CTN</div>}
-                        {(item.innerQty  || 0) > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.innerQty} INR</div>}
-                        {(item.looseQty  || 0) > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{item.looseQty} PCS</div>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
+                          {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                            <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <div style={{ width: 1, height: 60, background: 'var(--border)' }} />
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>To be Held</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {(item.cartonQty || 0) > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: borderColor }}>{item.cartonQty} CTN</div>}
-                        {(item.innerQty  || 0) > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: borderColor }}>{item.innerQty} INR</div>}
-                        {(item.looseQty  || 0) > 0 && <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: borderColor }}>{item.looseQty} PCS</div>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: borderColor }}>
+                          {formatPcsLabel(item.qtyOrdered - item.qtyDispatched, item).split(' + ').map((part, idx) => (
+                            <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
