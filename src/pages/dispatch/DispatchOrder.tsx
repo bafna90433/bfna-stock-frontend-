@@ -25,65 +25,34 @@ interface DispatchItem {
   stockStatus: 'available' | 'partial' | 'no_stock';
 }
 
-// Compute per-unit dispatch quantities for an item (same logic used in both render and submit)
-const computeItemDispatch = (item: DispatchItem) => {
-  const ppc = item.innerPerCarton || 0;
-  const ppi = item.pcsPerInner    || 0;
-  const hasCTN = (item.cartonQty || 0) > 0;
-  const hasINR = (item.innerQty  || 0) > 0;
-  const hasPCS = (item.looseQty  || 0) > 0;
+// Compute per-unit dispatch quantities for an item (fully independent bins)
+const computeItemDispatch = (item: any) => {
+  const pendingCTN = item.pendingCartons || 0;
+  const pendingINR = item.pendingInners || 0;
+  const pendingPCS = item.pendingLoose || 0;
 
-  const stockC = item.stockCartons ?? 0;
-  const stockI = item.stockInners  ?? 0;
-  const stockL = item.stockLoose   ?? 0;
-  const hasBreakdown = stockC > 0 || stockI > 0 || stockL > 0;
+  const effCTN = item.effectiveCartons || 0;
+  const effINR = item.effectiveInners || 0;
+  const effPCS = item.effectiveLoose || 0;
 
-  let pcsLeft = item.qtyDispatched;
-  
-  // 1. CTN Dispatch
-  let dispCTN = 0;
-  let ctnBinWarning = false;
-  if (hasCTN) {
-    if (ppc > 0) {
-      dispCTN = Math.min(Math.floor(pcsLeft / ppc), item.cartonQty || 0);
-      if (dispCTN > stockC && hasBreakdown) ctnBinWarning = true;
-    } else if (!hasINR && !hasPCS) {
-      dispCTN = item.cartonQty || 0;
-    } else {
-      ctnBinWarning = true; // No rate but mixed order
-    }
-  }
-  pcsLeft -= dispCTN * ppc;
+  // Dispatch exactly what is requested up to what we effectively have
+  const dispCTN = Math.max(0, Math.min(pendingCTN, effCTN));
+  const dispINR = Math.max(0, Math.min(pendingINR, effINR));
+  const dispPCS = Math.max(0, Math.min(pendingPCS, effPCS));
 
-  // 2. INR Dispatch
-  let dispINR = 0;
-  let inrBinWarning = false;
-  if (hasINR && ppi > 0) {
-    dispINR = Math.min(Math.floor(pcsLeft / ppi), item.innerQty || 0);
-    if (dispINR > stockI && hasBreakdown) inrBinWarning = true;
-  }
-  pcsLeft -= dispINR * ppi;
+  // What remains pending after this dispatch
+  const finalPendingCTN = pendingCTN - dispCTN;
+  const finalPendingINR = pendingINR - dispINR;
+  const finalPendingPCS = pendingPCS - dispPCS;
 
-  // 3. PCS Dispatch
-  let dispPCS = 0;
-  let pcsBinWarning = false;
-  if (hasPCS) {
-    dispPCS = Math.min(pcsLeft, item.looseQty || 0);
-    if (dispPCS > stockL && hasBreakdown) pcsBinWarning = true;
-  }
-
-  // Pending quantities (truly missing total stock)
-  const pendingCTN = hasCTN ? (item.cartonQty || 0) - dispCTN : 0;
-  const pendingINR = hasINR ? (item.innerQty  || 0) - dispINR : 0;
-  const pendingPCS = hasPCS ? (item.looseQty  || 0) - dispPCS : 0;
-  const hasAnyPending = pendingCTN > 0 || pendingINR > 0 || pendingPCS > 0;
+  const hasAnyPending = finalPendingCTN > 0 || finalPendingINR > 0 || finalPendingPCS > 0;
 
   return { 
     dispCTN, dispINR, dispPCS, 
-    ctnBinWarning, inrBinWarning, pcsBinWarning,
-    pendingCTN, pendingINR, pendingPCS, 
+    ctnBinWarning: false, inrBinWarning: false, pcsBinWarning: false,
+    pendingCTN: finalPendingCTN, pendingINR: finalPendingINR, pendingPCS: finalPendingPCS, 
     hasAnyPending,
-    hasCTN, hasINR, hasPCS 
+    hasCTN: pendingCTN > 0, hasINR: pendingINR > 0, hasPCS: pendingPCS > 0 
   };
 };
 
@@ -97,33 +66,13 @@ const formatOrderLabel = (item: DispatchItem): string => {
   return parts.join(' + ') || `${item.qtyOrdered} PCS`;
 };
 
-// For pcs-based quantities (dispatch amounts, available stock etc.)
-const formatPcsLabel = (pcs: number, item: DispatchItem): string => {
-  const ppi = item.pcsPerInner  || 0;
-  const ppc = item.innerPerCarton || 0;
-  if (ppc > 0) {
-    const ctns = Math.floor(pcs / ppc);
-    const rem  = pcs % ppc;
-    const parts: string[] = [];
-    if (ctns > 0) parts.push(`${ctns} CTN`);
-    if (rem > 0 && ppi > 0) {
-      const inners = Math.floor(rem / ppi);
-      const loose  = rem % ppi;
-      if (inners > 0) parts.push(`${inners} INR`);
-      if (loose > 0) parts.push(`${loose} PCS`);
-    } else if (rem > 0) {
-      parts.push(`${rem} PCS`);
-    }
-    return parts.join(' + ') || '0 PCS';
-  } else if (ppi > 0) {
-    const inners = Math.floor(pcs / ppi);
-    const loose  = pcs % ppi;
-    const parts: string[] = [];
-    if (inners > 0) parts.push(`${inners} INR`);
-    if (loose  > 0) parts.push(`${loose} PCS`);
-    return parts.join(' + ') || '0 PCS';
-  }
-  return `${pcs} PCS`;
+// Format exact bins as label
+const formatBinLabel = (c: number, i: number, l: number, defaultTotal: number): string => {
+  const parts: string[] = [];
+  if (c > 0) parts.push(`${c} CTN`);
+  if (i > 0) parts.push(`${i} INR`);
+  if (l > 0) parts.push(`${l} PCS`);
+  return parts.join(' + ') || (defaultTotal ? `${defaultTotal} PCS` : '0 PCS');
 };
 
 const DispatchOrder: React.FC = () => {
@@ -489,7 +438,7 @@ const DispatchOrder: React.FC = () => {
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Ordered</div>
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
-                      {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                      {formatBinLabel(item.cartonQty || 0, item.innerQty || 0, item.looseQty || 0, item.qtyOrdered).split(' + ').map((part, idx) => (
                         <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
                       ))}
                     </div>
@@ -498,7 +447,7 @@ const DispatchOrder: React.FC = () => {
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>To be Pending</div>
                     <div style={{ fontWeight: 800, fontSize: '1.4rem', fontFamily: 'var(--font-mono)', color: '#EF4444' }}>
-                      {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                      {formatBinLabel(item.pendingCartons || 0, item.pendingInners || 0, item.pendingLoose || 0, item.qtyOrdered).split(' + ').map((part, idx) => (
                         <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
                       ))}
                     </div>
@@ -538,7 +487,7 @@ const DispatchOrder: React.FC = () => {
                         </span>
                       ) : (
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', padding: '2px 10px', borderRadius: 99 }}>
-                          ⚠️ Only {formatPcsLabel(item.availableQty, item)} avail
+                          ⚠️ Only {formatBinLabel(item.effectiveCartons || 0, item.effectiveInners || 0, item.effectiveLoose || 0, item.availableQty)} avail
                         </span>
                       )}
                     </div>
@@ -548,7 +497,7 @@ const DispatchOrder: React.FC = () => {
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Ordered</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
                         <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
-                          {formatPcsLabel(item.qtyOrdered, item).split(' + ').map((part, idx) => (
+                          {formatBinLabel(item.cartonQty || 0, item.innerQty || 0, item.looseQty || 0, item.qtyOrdered).split(' + ').map((part, idx) => (
                             <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
                           ))}
                         </div>
@@ -559,7 +508,7 @@ const DispatchOrder: React.FC = () => {
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>To be Held</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
                         <div style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-mono)', color: borderColor }}>
-                          {formatPcsLabel(item.qtyOrdered - item.qtyDispatched, item).split(' + ').map((part, idx) => (
+                          {formatBinLabel(item.pendingCartons || 0, item.pendingInners || 0, item.pendingLoose || 0, item.qtyOrdered - item.qtyDispatched).split(' + ').map((part, idx) => (
                             <div key={idx} style={{ marginBottom: 2 }}>{part}</div>
                           ))}
                         </div>
